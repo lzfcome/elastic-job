@@ -44,6 +44,6 @@ public class ServerController {
     @RequestMapping(value = "jobs", method = RequestMethod.GET)
     public Collection<ServerInfo> getJobs(final ServerInfo jobServer, final ModelMap model) {
         model.put("serverIp", jobServer.getIp());
-        return jobAPIService.getServerStatisticsAPI().getJobs(jobServer.getIp());
+        return jobAPIService.getServerStatisticsAPI().getJobs(jobServer.getServerName());
     }
 }

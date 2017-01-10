@@ -23,11 +23,11 @@ import com.dangdang.ddframe.job.lite.internal.execution.ExecutionService;
 import com.dangdang.ddframe.job.lite.internal.listener.AbstractJobListener;
 import com.dangdang.ddframe.job.lite.internal.listener.AbstractListenerManager;
 import com.dangdang.ddframe.job.lite.internal.server.ServerNode;
+import com.dangdang.ddframe.job.lite.internal.server.ServerService;
 import com.dangdang.ddframe.job.reg.base.CoordinatorRegistryCenter;
 import lombok.Setter;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.cache.TreeCacheEvent;
-import org.apache.curator.framework.recipes.cache.TreeCacheEvent.Type;
 
 /**
  * 分片监听管理器.
@@ -40,6 +40,8 @@ public class ShardingListenerManager extends AbstractListenerManager {
     
     private final ExecutionService executionService;
     
+    private final ServerService serverService;
+    
     private final ConfigurationNode configNode;
     
     private final ServerNode serverNode;
@@ -51,6 +53,7 @@ public class ShardingListenerManager extends AbstractListenerManager {
         super(regCenter, jobName);
         shardingService = new ShardingService(regCenter, jobName);
         executionService = new ExecutionService(regCenter, jobName);
+        serverService = new ServerService(regCenter, jobName);
         configNode = new ConfigurationNode(jobName);
         serverNode = new ServerNode(jobName);
     }
@@ -80,13 +83,14 @@ public class ShardingListenerManager extends AbstractListenerManager {
         
         @Override
         protected void dataChanged(final CuratorFramework client, final TreeCacheEvent event, final String path) {
-            if (isServersCrashed(event, path) || serverNode.isServerDisabledPath(path) || serverNode.isServerShutdownPath(path)) {
-                shardingService.setReshardingFlag();
+            if (!serverNode.isServerJobPath(path)) {
+                return;
             }
-        }
-        
-        private boolean isServersCrashed(final TreeCacheEvent event, final String path) {
-            return serverNode.isServerStatusPath(path) && Type.NODE_UPDATED != event.getType();
+            String serverName = ServerNode.getServerName(path);
+            if (serverService.isShardingServerOff(serverName) || serverService.isShardingServerOn(serverName)) {
+                shardingService.setReshardingFlag();
+                serverService.clearJobStatusMark();
+            }
         }
     }
 }

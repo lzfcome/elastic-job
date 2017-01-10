@@ -36,6 +36,8 @@ public final class ServerInfo implements Serializable {
     
     private String jobName;
     
+    private String serverName;
+    
     private String ip;
     
     private String hostName;

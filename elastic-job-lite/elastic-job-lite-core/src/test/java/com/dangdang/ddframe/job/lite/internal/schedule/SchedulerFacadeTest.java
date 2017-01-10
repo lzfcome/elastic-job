@@ -87,9 +87,9 @@ public class SchedulerFacadeTest {
     }
     
     @Test
-    public void assertClearPreviousServerStatus() {
-        schedulerFacade.clearPreviousServerStatus();
-        verify(serverService).clearPreviousServerStatus();
+    public void assertInit() {
+        schedulerFacade.init(liteJobConfig);
+        verify(serverService).prepareServerNode(!liteJobConfig.isDisabled());
     }
     
     @Test
@@ -100,8 +100,6 @@ public class SchedulerFacadeTest {
         verify(listenerManager).startAllListeners();
         verify(leaderElectionService).leaderForceElection();
         verify(configService).persist(liteJobConfig);
-        verify(serverService).persistServerOnline(true);
-        verify(serverService).clearJobPausedStatus();
         verify(shardingService).setReshardingFlag();
         verify(monitorService).listen();
         verify(configService).load(false);

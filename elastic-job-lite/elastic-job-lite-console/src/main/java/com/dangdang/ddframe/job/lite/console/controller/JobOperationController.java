@@ -36,17 +36,17 @@ public class JobOperationController {
     
     @RequestMapping(value = "trigger", method = RequestMethod.POST)
     public void triggerJob(final ServerInfo jobServer) {
-        jobAPIService.getJobOperatorAPI().trigger(Optional.of(jobServer.getJobName()), Optional.of(jobServer.getIp()));
+        jobAPIService.getJobOperatorAPI().trigger(Optional.of(jobServer.getJobName()), Optional.of(jobServer.getServerName()));
     }
     
     @RequestMapping(value = "pause", method = RequestMethod.POST)
     public void pauseJob(final ServerInfo jobServer) {
-        jobAPIService.getJobOperatorAPI().pause(Optional.of(jobServer.getJobName()), Optional.of(jobServer.getIp()));
+        jobAPIService.getJobOperatorAPI().pause(Optional.of(jobServer.getJobName()), Optional.of(jobServer.getServerName()));
     }
     
     @RequestMapping(value = "resume", method = RequestMethod.POST)
     public void resumeJob(final ServerInfo jobServer) {
-        jobAPIService.getJobOperatorAPI().resume(Optional.of(jobServer.getJobName()), Optional.of(jobServer.getIp()));
+        jobAPIService.getJobOperatorAPI().resume(Optional.of(jobServer.getJobName()), Optional.of(jobServer.getServerName()));
     }
     
     @RequestMapping(value = "triggerAll/name", method = RequestMethod.POST)
@@ -66,36 +66,36 @@ public class JobOperationController {
     
     @RequestMapping(value = "triggerAll/ip", method = RequestMethod.POST)
     public void triggerAllJobs(final ServerInfo jobServer) {
-        jobAPIService.getJobOperatorAPI().trigger(Optional.<String>absent(), Optional.of(jobServer.getIp()));
+        jobAPIService.getJobOperatorAPI().trigger(Optional.<String>absent(), Optional.of(jobServer.getServerName()));
     }
     
     @RequestMapping(value = "pauseAll/ip", method = RequestMethod.POST)
     public void pauseAllJobs(final ServerInfo jobServer) {
-        jobAPIService.getJobOperatorAPI().pause(Optional.<String>absent(), Optional.of(jobServer.getIp()));
+        jobAPIService.getJobOperatorAPI().pause(Optional.<String>absent(), Optional.of(jobServer.getServerName()));
     }
     
     @RequestMapping(value = "resumeAll/ip", method = RequestMethod.POST)
     public void resumeAllJobs(final ServerInfo jobServer) {
-        jobAPIService.getJobOperatorAPI().resume(Optional.<String>absent(), Optional.of(jobServer.getIp()));
+        jobAPIService.getJobOperatorAPI().resume(Optional.<String>absent(), Optional.of(jobServer.getServerName()));
     }
     
     @RequestMapping(value = "shutdown", method = RequestMethod.POST)
     public void shutdownJob(final ServerInfo jobServer) {
-        jobAPIService.getJobOperatorAPI().shutdown(Optional.of(jobServer.getJobName()), Optional.of(jobServer.getIp()));
+        jobAPIService.getJobOperatorAPI().shutdown(Optional.of(jobServer.getJobName()), Optional.of(jobServer.getServerName()));
     }
     
     @RequestMapping(value = "remove", method = RequestMethod.POST)
     public Collection<String> removeJob(final ServerInfo jobServer) {
-        return jobAPIService.getJobOperatorAPI().remove(Optional.of(jobServer.getJobName()), Optional.of(jobServer.getIp()));
+        return jobAPIService.getJobOperatorAPI().remove(Optional.of(jobServer.getJobName()), Optional.of(jobServer.getServerName()));
     }
     
     @RequestMapping(value = "disable", method = RequestMethod.POST)
     public void disableJob(final ServerInfo jobServer) {
-        jobAPIService.getJobOperatorAPI().disable(Optional.of(jobServer.getJobName()), Optional.of(jobServer.getIp()));
+        jobAPIService.getJobOperatorAPI().disable(Optional.of(jobServer.getJobName()), Optional.of(jobServer.getServerName()));
     }
     
     @RequestMapping(value = "enable", method = RequestMethod.POST)
     public void enableJob(final ServerInfo jobServer) {
-        jobAPIService.getJobOperatorAPI().enable(Optional.of(jobServer.getJobName()), Optional.of(jobServer.getIp()));
+        jobAPIService.getJobOperatorAPI().enable(Optional.of(jobServer.getJobName()), Optional.of(jobServer.getServerName()));
     }
 }

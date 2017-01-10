@@ -42,17 +42,17 @@ public final class JobOperateTemplate {
      * 作业操作.
      *
      * @param jobName 作业名称
-     * @param serverIp 作业服务器IP地址
-     * @return 操作失败的作业服务器IP地址列表(作业维度操作)或作业名称列表(IP维度操作)
+     * @param serverName 作业服务器节点名称
+     * @return 操作失败的作业服务器节点列表(作业维度操作)或作业名称列表(IP维度操作)
      */
-    public Collection<String> operate(final Optional<String> jobName, final Optional<String> serverIp, final JobOperateCallback callback) {
-        Preconditions.checkArgument(jobName.isPresent() || serverIp.isPresent(), "At least indicate jobName or serverIp.");
+    public Collection<String> operate(final Optional<String> jobName, final Optional<String> serverName, final JobOperateCallback callback) {
+        Preconditions.checkArgument(jobName.isPresent() || serverName.isPresent(), "At least indicate jobName or serverIp.");
         Collection<String> result;
-        if (jobName.isPresent() && serverIp.isPresent()) {
-            boolean isSuccess = callback.doOperate(jobName.get(), serverIp.get());
+        if (jobName.isPresent() && serverName.isPresent()) {
+            boolean isSuccess = callback.doOperate(jobName.get(), serverName.get());
             if (!isSuccess) {
                 result = new ArrayList<>(1);
-                result.add(serverIp.get());
+                result.add(serverName.get());
             } else {
                 result = Collections.emptyList();
             }
@@ -70,7 +70,7 @@ public final class JobOperateTemplate {
             List<String> jobNames = regCenter.getChildrenKeys("/");
             result = new ArrayList<>(jobNames.size());
             for (String each : jobNames) {
-                boolean isSuccess = callback.doOperate(each, serverIp.get());
+                boolean isSuccess = callback.doOperate(each, serverName.get());
                 if (!isSuccess) {
                     result.add(each);
                 }

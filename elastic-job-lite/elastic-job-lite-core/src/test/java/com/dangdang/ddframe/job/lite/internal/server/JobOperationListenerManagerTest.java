@@ -17,14 +17,17 @@
 
 package com.dangdang.ddframe.job.lite.internal.server;
 
+import com.dangdang.ddframe.job.config.JobCoreConfiguration;
+import com.dangdang.ddframe.job.config.simple.SimpleJobConfiguration;
+import com.dangdang.ddframe.job.lite.config.LiteJobConfiguration;
+import com.dangdang.ddframe.job.lite.internal.config.ConfigurationService;
 import com.dangdang.ddframe.job.lite.internal.execution.ExecutionService;
 import com.dangdang.ddframe.job.lite.internal.schedule.JobRegistry;
 import com.dangdang.ddframe.job.lite.internal.schedule.JobScheduleController;
 import com.dangdang.ddframe.job.lite.internal.server.JobOperationListenerManager.ConnectionLostListener;
-import com.dangdang.ddframe.job.lite.internal.server.JobOperationListenerManager.JobPausedStatusJobListener;
+import com.dangdang.ddframe.job.lite.internal.server.JobOperationListenerManager.JobStatusJobListener;
 import com.dangdang.ddframe.job.lite.internal.sharding.ShardingService;
 import com.dangdang.ddframe.job.lite.internal.storage.JobNodeStorage;
-import com.dangdang.ddframe.job.util.env.LocalHostService;
 import org.apache.curator.framework.recipes.cache.ChildData;
 import org.apache.curator.framework.recipes.cache.TreeCacheEvent;
 import org.apache.curator.framework.state.ConnectionState;
@@ -58,7 +61,8 @@ public final class JobOperationListenerManagerTest {
     @Mock
     private JobScheduleController jobScheduleController;
     
-    private String ip = new LocalHostService().getIp();
+    @Mock
+    private ConfigurationService configService;
     
     private final JobOperationListenerManager jobOperationListenerManager = new JobOperationListenerManager(null, "test_job");
     
@@ -68,14 +72,16 @@ public final class JobOperationListenerManagerTest {
         ReflectionUtils.setFieldValue(jobOperationListenerManager, "serverService", serverService);
         ReflectionUtils.setFieldValue(jobOperationListenerManager, "shardingService", shardingService);
         ReflectionUtils.setFieldValue(jobOperationListenerManager, "executionService", executionService);
+        ReflectionUtils.setFieldValue(jobOperationListenerManager, "configService", configService);
         ReflectionUtils.setFieldValue(jobOperationListenerManager, jobOperationListenerManager.getClass().getSuperclass().getDeclaredField("jobNodeStorage"), jobNodeStorage);
+        JobRegistry.getInstance().addJobServerName("test_job", "host0_0001");
     }
     
     @Test
     public void assertStart() {
         jobOperationListenerManager.start();
         verify(jobNodeStorage).addConnectionStateListener(Matchers.<ConnectionLostListener>any());
-        verify(jobNodeStorage, times(3)).addDataListener(Matchers.<JobPausedStatusJobListener>any());
+        verify(jobNodeStorage).addDataListener(Matchers.<JobStatusJobListener>any());
     }
     
     @Test
@@ -89,25 +95,36 @@ public final class JobOperationListenerManagerTest {
     public void assertConnectionLostListenerWhenConnectionStateIsReconnectedAndIsNotPausedManually() {
         JobRegistry.getInstance().addJobScheduleController("test_job", jobScheduleController);
         when(shardingService.getLocalHostShardingItems()).thenReturn(Arrays.asList(0, 1));
-        when(serverService.isLocalhostServerEnabled()).thenReturn(true);
         when(serverService.isJobPausedManually()).thenReturn(false);
+        when(configService.load(true)).thenReturn(createSimpleJobConfiguration());
         jobOperationListenerManager.new ConnectionLostListener().stateChanged(null, ConnectionState.RECONNECTED);
-        verify(serverService).isLocalhostServerEnabled();
-        verify(serverService).persistServerOnline(true);
+        verify(serverService).prepareServerNode(true);
+        verify(configService).load(true);
+        verify(shardingService).getLocalHostShardingItems();
         verify(executionService).clearRunningInfo(Arrays.asList(0, 1));
+        verify(serverService).isJobPausedManually();
         verify(jobScheduleController).resumeJob();
+    }
+    
+    private LiteJobConfiguration createSimpleJobConfiguration() {
+        JobCoreConfiguration simpleCoreConfig = JobCoreConfiguration.newBuilder("test_job", "0/5 * * * * ?", 5).build();
+        SimpleJobConfiguration simpleJobConfig = new SimpleJobConfiguration(simpleCoreConfig, "com.dangdang.test.MyJob");
+        LiteJobConfiguration simpleJobRootConfig = LiteJobConfiguration.newBuilder(simpleJobConfig).overwrite(true).build();
+        return simpleJobRootConfig;
     }
     
     @Test
     public void assertConnectionLostListenerWhenConnectionStateIsReconnectedAndIsPausedManually() {
         JobRegistry.getInstance().addJobScheduleController("test_job", jobScheduleController);
         when(shardingService.getLocalHostShardingItems()).thenReturn(Arrays.asList(0, 1));
-        when(serverService.isLocalhostServerEnabled()).thenReturn(true);
         when(serverService.isJobPausedManually()).thenReturn(true);
+        when(configService.load(true)).thenReturn(createSimpleJobConfiguration());
         jobOperationListenerManager.new ConnectionLostListener().stateChanged(null, ConnectionState.RECONNECTED);
-        verify(serverService).isLocalhostServerEnabled();
-        verify(serverService).persistServerOnline(true);
+        verify(serverService).prepareServerNode(true);
+        verify(configService).load(true);
+        verify(shardingService).getLocalHostShardingItems();
         verify(executionService).clearRunningInfo(Arrays.asList(0, 1));
+        verify(serverService).isJobPausedManually();
         verify(jobScheduleController, times(0)).resumeJob();
     }
     
@@ -120,122 +137,159 @@ public final class JobOperationListenerManagerTest {
     }
     
     @Test
-    public void assertJobTriggerStatusJobListenerWhenRemove() {
-        jobOperationListenerManager.new JobTriggerStatusJobListener().dataChanged(null, new TreeCacheEvent(
-                TreeCacheEvent.Type.NODE_REMOVED, new ChildData("/test_job/servers/" + ip + "/trigger", null, "".getBytes())), "/test_job/servers/" + ip + "/trigger");
-        verify(serverService, times(0)).clearJobTriggerStatus();
+    public void assertJobStatusJobListenerWhenRemove() {
+        jobOperationListenerManager.new JobStatusJobListener().dataChanged(null, new TreeCacheEvent(
+                TreeCacheEvent.Type.NODE_REMOVED, new ChildData("/test_job/servers/host0_0001", null, "".getBytes())), "/test_job/servers/host0_0001");
+        verify(serverService, times(0)).loadServerData();
         verify(jobScheduleController, times(0)).triggerJob();
+        verify(jobScheduleController, times(0)).shutdown();
+        verify(jobScheduleController, times(0)).pauseJob();
+        verify(jobScheduleController, times(0)).resumeJob();
     }
     
     @Test
-    public void assertJobTriggerStatusJobListenerWhenIsAddButNotLocalHostJobTriggerPath() {
-        jobOperationListenerManager.new JobTriggerStatusJobListener().dataChanged(null, new TreeCacheEvent(
-                TreeCacheEvent.Type.NODE_ADDED, new ChildData("/test_job/servers/" + ip + "/other", null, "".getBytes())), "/test_job/servers/" + ip + "/other");
-        verify(serverService, times(0)).clearJobTriggerStatus();
+    public void assertJobStatusJobListenerWhenUpdateButNotLocalHostJobPath() {
+        jobOperationListenerManager.new JobStatusJobListener().dataChanged(null, new TreeCacheEvent(
+                TreeCacheEvent.Type.NODE_UPDATED, new ChildData("/test_job/servers/host1_0001", null, "".getBytes())), "/test_job/servers/host1_0001");
+        verify(serverService, times(0)).loadServerData();
         verify(jobScheduleController, times(0)).triggerJob();
+        verify(jobScheduleController, times(0)).shutdown();
+        verify(jobScheduleController, times(0)).pauseJob();
+        verify(jobScheduleController, times(0)).resumeJob();
     }
     
     @Test
-    public void assertJobTriggerStatusJobListenerWhenIsAddAndIsJobLocalHostTriggerPathButNoJobRegister() {
-        jobOperationListenerManager.new JobTriggerStatusJobListener().dataChanged(null, new TreeCacheEvent(
-                TreeCacheEvent.Type.NODE_ADDED, new ChildData("/test_job/servers/" + ip + "/trigger", null, "".getBytes())), "/test_job/servers/" + ip + "/trigger");
+    public void assertJobStatusJobListenerWhenTriggerStatusUpdateButNoJobScheduleController() {
+        ServerData data = new ServerData("host0", "host0", false);
+        data.setTriggerAndMark(true);
+        when(serverService.loadServerData()).thenReturn(data);
+        jobOperationListenerManager.new JobStatusJobListener().dataChanged(null, new TreeCacheEvent(
+                TreeCacheEvent.Type.NODE_UPDATED, new ChildData("/test_job/servers/host0_0001", null, "".getBytes())), "/test_job/servers/host0_0001");
+        verify(serverService).loadServerData();
         verify(serverService).clearJobTriggerStatus();
         verify(jobScheduleController, times(0)).triggerJob();
+        verify(jobScheduleController, times(0)).shutdown();
+        verify(jobScheduleController, times(0)).pauseJob();
+        verify(jobScheduleController, times(0)).resumeJob();
     }
     
     @Test
-    public void assertJobTriggerStatusJobListenerWhenIsAddAndIsJobLocalHostTriggerPathAndJobRegisterButServerIsNotReady() {
+    public void assertJobStatusJobListenerWhenTriggerStatusUpdateButServerIsNotReady() {
         JobRegistry.getInstance().addJobScheduleController("test_job", jobScheduleController);
-        jobOperationListenerManager.new JobTriggerStatusJobListener().dataChanged(null, new TreeCacheEvent(
-                TreeCacheEvent.Type.NODE_ADDED, new ChildData("/test_job/servers/" + ip + "/trigger", null, "".getBytes())), "/test_job/servers/" + ip + "/trigger");
+        ServerData data = new ServerData("host0", "host0", false);
+        data.setTriggerAndMark(true);
+        data.setPaused(true);
+        when(serverService.loadServerData()).thenReturn(data);
+        jobOperationListenerManager.new JobStatusJobListener().dataChanged(null, new TreeCacheEvent(
+                TreeCacheEvent.Type.NODE_UPDATED, new ChildData("/test_job/servers/host0_0001", null, "".getBytes())), "/test_job/servers/host0_0001");
+        verify(serverService).loadServerData();
         verify(serverService).clearJobTriggerStatus();
         verify(serverService).isLocalhostServerReady();
         verify(jobScheduleController, times(0)).triggerJob();
+        verify(jobScheduleController, times(0)).shutdown();
+        verify(jobScheduleController, times(0)).pauseJob();
+        verify(jobScheduleController, times(0)).resumeJob();
     }
     
     @Test
-    public void assertJobTriggerStatusJobListenerWhenIsAddAndIsJobLocalHostTriggerPathAndJobRegisterAndServerIsReady() {
+    public void assertJobStatusJobListenerWhenTriggerStatusUpdate() {
         JobRegistry.getInstance().addJobScheduleController("test_job", jobScheduleController);
+        ServerData data = new ServerData("host0", "host0", false);
+        data.setTriggerAndMark(true);
+        when(serverService.loadServerData()).thenReturn(data);
         when(serverService.isLocalhostServerReady()).thenReturn(true);
-        jobOperationListenerManager.new JobTriggerStatusJobListener().dataChanged(null, new TreeCacheEvent(
-                TreeCacheEvent.Type.NODE_ADDED, new ChildData("/test_job/servers/" + ip + "/trigger", null, "".getBytes())), "/test_job/servers/" + ip + "/trigger");
+        jobOperationListenerManager.new JobStatusJobListener().dataChanged(null, new TreeCacheEvent(
+                TreeCacheEvent.Type.NODE_UPDATED, new ChildData("/test_job/servers/host0_0001", null, "".getBytes())), "/test_job/servers/host0_0001");
+        verify(serverService).loadServerData();
+        verify(serverService).clearJobTriggerStatus();
         verify(serverService).isLocalhostServerReady();
         verify(jobScheduleController).triggerJob();
-        verify(serverService).clearJobTriggerStatus();
-    }
-    
-    @Test
-    public void assertJobPausedStatusJobListenerWhenIsNotJobPausedPath() {
-        jobOperationListenerManager.new JobPausedStatusJobListener().dataChanged(null, new TreeCacheEvent(
-                TreeCacheEvent.Type.NODE_UPDATED, new ChildData("/test_job/servers/" + ip + "/other", null, "".getBytes())), "/test_job/servers/" + ip + "/other");
+        verify(jobScheduleController, times(0)).shutdown();
         verify(jobScheduleController, times(0)).pauseJob();
         verify(jobScheduleController, times(0)).resumeJob();
     }
     
     @Test
-    public void assertJobPausedStatusJobListenerWhenIsJobPausedPathButJobIsNotExisted() {
-        jobOperationListenerManager.new JobPausedStatusJobListener().dataChanged(null, new TreeCacheEvent(
-                TreeCacheEvent.Type.NODE_ADDED, new ChildData("/test_job/servers/" + ip + "/paused", null, "".getBytes())), "/test_job/servers/" + ip + "/paused");
-        verify(jobScheduleController, times(0)).pauseJob();
-        verify(jobScheduleController, times(0)).resumeJob();
-    }
-    
-    @Test
-    public void assertJobPausedStatusJobListenerWhenIsJobPausedPathAndUpdate() {
+    public void assertJobStatusJobListenerWhenStatusUpdateButJobIsNotExisted() {
         JobRegistry.getInstance().addJobScheduleController("test_job", jobScheduleController);
-        jobOperationListenerManager.new JobPausedStatusJobListener().dataChanged(null, new TreeCacheEvent(
-                TreeCacheEvent.Type.NODE_UPDATED, new ChildData("/test_job/servers/" + ip + "/paused", null, "".getBytes())), "/test_job/servers/" + ip + "/paused");
+        when(serverService.loadServerData()).thenReturn(null);
+        jobOperationListenerManager.new JobStatusJobListener().dataChanged(null, new TreeCacheEvent(
+                TreeCacheEvent.Type.NODE_UPDATED, new ChildData("/test_job/servers/host0_0001", null, "".getBytes())), "/test_job/servers/host0_0001");
+        verify(serverService).loadServerData();
+        verify(serverService, times(0)).clearJobTriggerStatus();
+        verify(serverService, times(0)).isLocalhostServerReady();
+        verify(jobScheduleController, times(0)).triggerJob();
+        verify(jobScheduleController, times(0)).shutdown();
+        verify(jobScheduleController, times(0)).pauseJob();
+        verify(jobScheduleController, times(0)).resumeJob();
+    }
+    
+    
+    @Test
+    public void assertJobStatusJobListenerWhenPausedStatusUpdateButNoMark() {
+        JobRegistry.getInstance().addJobScheduleController("test_job", jobScheduleController);
+        ServerData data = new ServerData("host0", "host0", false);
+        data.setPaused(true);
+        when(serverService.loadServerData()).thenReturn(data);
+        jobOperationListenerManager.new JobStatusJobListener().dataChanged(null, new TreeCacheEvent(
+                TreeCacheEvent.Type.NODE_UPDATED, new ChildData("/test_job/servers/host0_0001", null, "".getBytes())), "/test_job/servers/host0_0001");
+        verify(serverService).loadServerData();
+        verify(serverService, times(0)).clearJobTriggerStatus();
+        verify(serverService, times(0)).isLocalhostServerReady();
+        verify(jobScheduleController, times(0)).triggerJob();
+        verify(jobScheduleController, times(0)).shutdown();
         verify(jobScheduleController, times(0)).pauseJob();
         verify(jobScheduleController, times(0)).resumeJob();
     }
     
     @Test
-    public void assertJobPausedStatusJobListenerWhenIsJobPausedPathAndAdd() {
+    public void assertJobStatusJobListenerWhenPausedStatusUpdate() {
         JobRegistry.getInstance().addJobScheduleController("test_job", jobScheduleController);
-        jobOperationListenerManager.new JobPausedStatusJobListener().dataChanged(null, new TreeCacheEvent(
-                TreeCacheEvent.Type.NODE_ADDED, new ChildData("/test_job/servers/" + ip + "/paused", null, "".getBytes())), "/test_job/servers/" + ip + "/paused");
+        ServerData data = new ServerData("host0", "host0", false);
+        data.setPausedAndMark(true);
+        when(serverService.loadServerData()).thenReturn(data);
+        jobOperationListenerManager.new JobStatusJobListener().dataChanged(null, new TreeCacheEvent(
+                TreeCacheEvent.Type.NODE_UPDATED, new ChildData("/test_job/servers/host0_0001", null, "".getBytes())), "/test_job/servers/host0_0001");
+        verify(serverService).loadServerData();
+        verify(serverService, times(0)).clearJobTriggerStatus();
+        verify(serverService, times(0)).isLocalhostServerReady();
+        verify(jobScheduleController, times(0)).triggerJob();
+        verify(jobScheduleController, times(0)).shutdown();
         verify(jobScheduleController).pauseJob();
         verify(jobScheduleController, times(0)).resumeJob();
     }
     
     @Test
-    public void assertJobPausedStatusJobListenerWhenIsJobPausedPathAndRemove() {
+    public void assertJobStatusJobListenerWhenPausedStatusUpdateWhenIsJobPaused() {
         JobRegistry.getInstance().addJobScheduleController("test_job", jobScheduleController);
-        jobOperationListenerManager.new JobPausedStatusJobListener().dataChanged(null, new TreeCacheEvent(
-                TreeCacheEvent.Type.NODE_REMOVED, new ChildData("/test_job/servers/" + ip + "/paused", null, "".getBytes())), "/test_job/servers/" + ip + "/paused");
+        ServerData data = new ServerData("host0", "host0", false);
+        data.setPausedAndMark(false);
+        when(serverService.loadServerData()).thenReturn(data);
+        jobOperationListenerManager.new JobStatusJobListener().dataChanged(null, new TreeCacheEvent(
+                TreeCacheEvent.Type.NODE_UPDATED, new ChildData("/test_job/servers/host0_0001", null, "".getBytes())), "/test_job/servers/host0_0001");
+        verify(serverService).loadServerData();
+        verify(serverService, times(0)).clearJobTriggerStatus();
+        verify(serverService, times(0)).isLocalhostServerReady();
+        verify(jobScheduleController, times(0)).triggerJob();
+        verify(jobScheduleController, times(0)).shutdown();
         verify(jobScheduleController, times(0)).pauseJob();
         verify(jobScheduleController).resumeJob();
-        verify(serverService).clearJobPausedStatus();
     }
     
     @Test
-    public void assertJobShutdownStatusJobListenerWhenIsNotJobShutdownPath() {
-        jobOperationListenerManager.new JobShutdownStatusJobListener().dataChanged(null, new TreeCacheEvent(
-                TreeCacheEvent.Type.NODE_UPDATED, new ChildData("/test_job/servers/" + ip + "/other", null, "".getBytes())), "/test_job/servers/" + ip + "/other");
-        verify(jobScheduleController, times(0)).shutdown();
-    }
-    
-    @Test
-    public void assertJobShutdownStatusJobListenerWhenIsJobShutdownPathButJobIsNotExisted() {
-        jobOperationListenerManager.new JobShutdownStatusJobListener().dataChanged(null, new TreeCacheEvent(
-                TreeCacheEvent.Type.NODE_ADDED, new ChildData("/test_job/servers/" + ip + "/shutdown", null, "".getBytes())), "/test_job/servers/" + ip + "/shutdown");
-        verify(jobScheduleController, times(0)).shutdown();
-    }
-    
-    @Test
-    public void assertJobShutdownStatusJobListenerWhenIsJobShutdownPathAndUpdate() {
+    public void assertJobStatusJobListenerWhenShutdownStatusUpdate() {
         JobRegistry.getInstance().addJobScheduleController("test_job", jobScheduleController);
-        jobOperationListenerManager.new JobShutdownStatusJobListener().dataChanged(null, new TreeCacheEvent(
-                TreeCacheEvent.Type.NODE_UPDATED, new ChildData("/test_job/servers/" + ip + "/shutdown", null, "".getBytes())), "/test_job/servers/" + ip + "/shutdown");
-        verify(jobScheduleController, times(0)).shutdown();
-    }
-    
-    @Test
-    public void assertJobShutdownStatusJobListenerWhenIsJobShutdownPathAndAdd() {
-        JobRegistry.getInstance().addJobScheduleController("test_job", jobScheduleController);
-        jobOperationListenerManager.new JobShutdownStatusJobListener().dataChanged(null, new TreeCacheEvent(
-                TreeCacheEvent.Type.NODE_ADDED, new ChildData("/test_job/servers/" + ip + "/shutdown", null, "".getBytes())), "/test_job/servers/" + ip + "/shutdown");
+        ServerData data = new ServerData("host0", "host0", false);
+        data.setShutdownAndMark(true);
+        when(serverService.loadServerData()).thenReturn(data);
+        jobOperationListenerManager.new JobStatusJobListener().dataChanged(null, new TreeCacheEvent(
+                TreeCacheEvent.Type.NODE_UPDATED, new ChildData("/test_job/servers/host0_0001", null, "".getBytes())), "/test_job/servers/host0_0001");
+        verify(serverService).loadServerData();
+        verify(serverService, times(0)).clearJobTriggerStatus();
+        verify(serverService, times(0)).isLocalhostServerReady();
+        verify(jobScheduleController, times(0)).triggerJob();
         verify(jobScheduleController).shutdown();
-        verify(serverService).processServerShutdown();
+        verify(jobScheduleController, times(0)).pauseJob();
+        verify(jobScheduleController, times(0)).resumeJob();
     }
 }

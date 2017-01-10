@@ -34,26 +34,31 @@ public final class JobNodePath {
     /**
      * 作业立刻触发节点名称.
      */
+    @Deprecated
     public static final String TRIGGER_NODE = "trigger";
     
     /**
      * 作业暂停节点名称.
      */
+    @Deprecated
     public static final String PAUSED_NODE = "paused";
     
     /**
      * 作业禁用节点名称.
      */
+    @Deprecated
     public static final String DISABLED_NODE = "disabled";
     
     /**
      * 作业关闭节点名称.
      */
+    @Deprecated
     public static final String SHUTDOWN_NODE = "shutdown";
     
     /**
      * 作业状态节点名称.
      */
+    @Deprecated
     public static final String STATUS_NODE = "status";
     
     private static final String LEADER_HOST_NODE = "leader/election/host";
@@ -95,33 +100,34 @@ public final class JobNodePath {
     }
     
     /**
-     * 获取作业节点IP地址根路径.
+     * 获取作业服务器节点根路径.
      *
-     * @return 作业节点IP地址根路径
+     * @return 作业服务器节点根路径
      */
     public String getServerNodePath() {
         return String.format("/%s/%s", jobName, SERVERS_NODE);
     }
     
     /**
-     * 根据IP地址获取作业节点路径.
+     * 根据作业服务器节点名称获取作业服务器节点路径.
      *
-     * @param serverIp 作业服务器IP地址
-     * @return 作业节点IP地址路径
+     * @param serverName 作业服务器节点名称
+     * @return 作业节点地址路径
      */
-    public String getServerNodePath(final String serverIp) {
-        return String.format("%s/%s", getServerNodePath(), serverIp);
+    public String getServerNodePath(final String serverName) {
+        return String.format("%s/%s", getServerNodePath(), serverName);
     }
     
     /**
-     * 根据IP地址和子节点名称获取作业节点路径.
+     * 根据作业服务器节点名称和子节点名称获取作业节点路径.
      *
-     * @param serverIp 作业服务器IP地址
+     * @param serverName 作业服务器节点名称
      * @param nodeName 子节点名称
      * @return 作业节点IP地址子节点路径
      */
-    public String getServerNodePath(final String serverIp, final String nodeName) {
-        return String.format("%s/%s", getServerNodePath(serverIp), nodeName);
+    @Deprecated
+    public String getServerNodePath(final String serverName, final String nodeName) {
+        return String.format("%s/%s", getServerNodePath(serverName), nodeName);
     }
     
     /**

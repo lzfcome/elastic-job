@@ -115,7 +115,7 @@ public final class ElectionListenerManagerTest {
     @Test
     public void assertLeaderElectionJobListenerWhenJobDisabledAndIsNotLeader() {
         when(leaderElectionService.isLeader()).thenReturn(false);
-        when(serverNode.isLocalJobPausedPath("/test_job/server/mockedIP/disabled")).thenReturn(true);
+        //when(serverNode.isLocalJobPausedPath("/test_job/server/mockedIP/disabled")).thenReturn(true);
         electionListenerManager.new LeaderElectionJobListener().dataChanged(null, new TreeCacheEvent(
                 TreeCacheEvent.Type.NODE_ADDED, new ChildData("/test_job/server/mockedIP/disabled", null, "localhost".getBytes())), "/test_job/server/mockedIP/disabled");
         verify(leaderElectionService, times(0)).removeLeader();
@@ -124,7 +124,7 @@ public final class ElectionListenerManagerTest {
     @Test
     public void assertLeaderElectionJobListenerWhenJobShutdownAndIsLeader() {
         when(leaderElectionService.isLeader()).thenReturn(true);
-        when(serverNode.isLocalJobPausedPath("/test_job/server/mockedIP/shutdown")).thenReturn(true);
+        //when(serverNode.isLocalJobPausedPath("/test_job/server/mockedIP/shutdown")).thenReturn(true);
         electionListenerManager.new LeaderElectionJobListener().dataChanged(null, new TreeCacheEvent(
                 TreeCacheEvent.Type.NODE_ADDED, new ChildData("/test_job/server/mockedIP/shutdown", null, "localhost".getBytes())), "/test_job/server/mockedIP/shutdown");
         verify(leaderElectionService).removeLeader();

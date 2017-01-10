@@ -31,7 +31,10 @@ public abstract class AbstractListenerManager {
     
     private final JobNodeStorage jobNodeStorage;
     
+    protected final String jobName;
+    
     protected AbstractListenerManager(final CoordinatorRegistryCenter regCenter, final String jobName) {
+        this.jobName = jobName;
         jobNodeStorage = new JobNodeStorage(regCenter, jobName);
     }
 

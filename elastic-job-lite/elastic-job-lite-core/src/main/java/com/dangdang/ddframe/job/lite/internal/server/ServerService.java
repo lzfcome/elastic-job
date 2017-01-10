@@ -17,6 +17,7 @@
 
 package com.dangdang.ddframe.job.lite.internal.server;
 
+import com.dangdang.ddframe.job.lite.internal.schedule.JobRegistry;
 import com.dangdang.ddframe.job.lite.internal.storage.JobNodeStorage;
 import com.dangdang.ddframe.job.reg.base.CoordinatorRegistryCenter;
 import com.dangdang.ddframe.job.util.env.LocalHostService;
@@ -24,6 +25,8 @@ import com.dangdang.ddframe.job.util.env.LocalHostService;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import com.google.common.base.Strings;
 
 /**
  * 作业服务器节点服务.
@@ -33,50 +36,85 @@ import java.util.List;
  */
 public class ServerService {
     
+    private final String jobName;
+    
     private final JobNodeStorage jobNodeStorage;
     
     private final LocalHostService localHostService = new LocalHostService();
     
+    private final JobRegistry jobRegistry;
+    
     public ServerService(final CoordinatorRegistryCenter regCenter, final String jobName) {
+        this.jobName = jobName;
         jobNodeStorage = new JobNodeStorage(regCenter, jobName);
+        jobRegistry = JobRegistry.getInstance();
     }
     
     /**
-     * 每次作业启动前清理上次运行状态.
-     */
-    public void clearPreviousServerStatus() {
-        jobNodeStorage.removeJobNodeIfExisted(ServerNode.getStatusNode(localHostService.getIp()));
-        jobNodeStorage.removeJobNodeIfExisted(ServerNode.getShutdownNode(localHostService.getIp()));
-    }
-    
-    /**
-     * 持久化作业服务器上线相关信息.
+     * 初始化作业server节点, 节点名称格式为ip_seq.
      * 
-     * @param enabled 作业是否启用
+     * @param enabled 是否启用job
      */
-    public void persistServerOnline(final boolean enabled) {
-        jobNodeStorage.fillJobNode(ServerNode.getHostNameNode(localHostService.getIp()), localHostService.getHostName());
-        if (enabled) {
-            jobNodeStorage.removeJobNodeIfExisted(ServerNode.getDisabledNode(localHostService.getIp()));
+    public void prepareServerNode(final boolean enabled) {
+        if (Strings.isNullOrEmpty(jobRegistry.getJobServerName(jobName))) {
+            createServerData(enabled);
         } else {
-            jobNodeStorage.fillJobNode(ServerNode.getDisabledNode(localHostService.getIp()), "");
+            if (!jobNodeStorage.isJobNodeExisted(ServerNode.getServerNode(jobRegistry.getJobServerName(jobName)))) {
+                createServerData(enabled);
+            } else {
+                ServerData data = loadServerData();
+                if (null != data) {
+                    data.setStatus(ServerStatus.READY);
+                } else {
+                    data = new ServerData(localHostService.getHostName(), localHostService.getIp(), !enabled);
+                }
+                updateServerData(data);
+            }
         }
-        jobNodeStorage.fillEphemeralJobNode(ServerNode.getStatusNode(localHostService.getIp()), ServerStatus.READY);
-        jobNodeStorage.removeJobNodeIfExisted(ServerNode.getShutdownNode(localHostService.getIp()));
+    }
+
+    private void createServerData(final boolean enabled) {
+        ServerData data = new ServerData(localHostService.getHostName(), localHostService.getIp(), !enabled);
+        String serverNodePath = jobNodeStorage.fillEphemeralSequentialJobNode(ServerNode.getServerBaseNode(localHostService.getIp()), ServerDataGsonFactory.toJson(data));
+        if (!Strings.isNullOrEmpty(serverNodePath)) {
+            jobRegistry.addJobServerName(jobName, serverNodePath.substring(serverNodePath.indexOf(localHostService.getIp())));
+        }
     }
     
     /**
      * 清除立刻执行作业的标记.
      */
     public void clearJobTriggerStatus() {
-        jobNodeStorage.removeJobNodeIfExisted(ServerNode.getTriggerNode(localHostService.getIp()));
+        ServerData data = loadServerData();
+        if (data == null) {
+            return;
+        }
+        data.setTriggerAndRemoveMark(false);
+        updateServerData(data);
     }
     
     /**
      * 清除暂停作业的标记.
      */
     public void clearJobPausedStatus() {
-        jobNodeStorage.removeJobNodeIfExisted(ServerNode.getPausedNode(localHostService.getIp()));
+        ServerData data = loadServerData();
+        if (data == null) {
+            return;
+        }
+        data.setPausedAndRemoveMark(false);
+        updateServerData(data);
+    }
+    
+    /**
+     * 清除暂停作业的标记.
+     */
+    public void clearJobStatusMark() {
+        ServerData data = loadServerData();
+        if (data == null) {
+            return;
+        }
+        data.setChangedItem(null);
+        updateServerData(data);
     }
     
     /**
@@ -85,14 +123,23 @@ public class ServerService {
      * @return 是否是手工暂停的作业
      */
     public boolean isJobPausedManually() {
-        return jobNodeStorage.isJobNodeExisted(ServerNode.getPausedNode(localHostService.getIp()));
+        ServerData data = loadServerData();
+        if (data == null) {
+            return false;
+        }
+        return data.isPaused();
     }
     
     /**
      * 处理服务器关机的相关信息.
      */
     public void processServerShutdown() {
-        jobNodeStorage.removeJobNodeIfExisted(ServerNode.getStatusNode(localHostService.getIp()));
+        ServerData data = loadServerData();
+        if (data == null) {
+            return;
+        }
+        data.setShutdownAndRemoveMark(false);
+        updateServerData(data);
     }
     
     /**
@@ -101,14 +148,21 @@ public class ServerService {
      * @param status 服务器状态
      */
     public void updateServerStatus(final ServerStatus status) {
-        jobNodeStorage.updateJobNode(ServerNode.getStatusNode(localHostService.getIp()), status);
+        ServerData data = loadServerData();
+        if (data == null) {
+            return;
+        }
+        data.setStatus(status);
+        updateServerData(data);
     }
     
     /**
      * 删除服务器状态.
      */
+    
     public void removeServerStatus() {
-        jobNodeStorage.removeJobNodeIfExisted(ServerNode.getStatusNode(localHostService.getIp()));
+        removeServerData();
+        jobRegistry.removeJobServerName(jobName);
     }
     
     /**
@@ -138,9 +192,9 @@ public class ServerService {
         return result;
     }
     
-    private boolean isAvailableShardingServer(final String ip) {
-        return jobNodeStorage.isJobNodeExisted(ServerNode.getStatusNode(ip)) 
-                && !jobNodeStorage.isJobNodeExisted(ServerNode.getDisabledNode(ip)) && !jobNodeStorage.isJobNodeExisted(ServerNode.getShutdownNode(ip));
+    private boolean isAvailableShardingServer(final String serverName) {
+        ServerData data = loadServerData(serverName);
+        return data != null && !data.isDisabled() && !data.isShutdown();
     }
     
     /**
@@ -162,12 +216,21 @@ public class ServerService {
     /**
      * 判断作业服务器是否可用.
      * 
-     * @param ip 作业服务器IP地址.
      * @return 作业服务器是否可用
      */
-    public boolean isAvailableServer(final String ip) {
-        return jobNodeStorage.isJobNodeExisted(ServerNode.getStatusNode(ip)) && !jobNodeStorage.isJobNodeExisted(ServerNode.getPausedNode(ip))
-                && !jobNodeStorage.isJobNodeExisted(ServerNode.getDisabledNode(ip)) && !jobNodeStorage.isJobNodeExisted(ServerNode.getShutdownNode(ip));
+    public boolean isAvailableServer() {
+        return isAvailableServer(jobRegistry.getJobServerName(jobName));
+    }
+    
+    /**
+     * 判断作业服务器是否可用.
+     * 
+     * @param serverName 作业服务器名称
+     * @return 作业服务器是否可用
+     */
+    public boolean isAvailableServer(final String serverName) {
+        ServerData data = loadServerData(serverName);
+        return data != null && !data.isDisabled() && !data.isPaused() && !data.isShutdown();
     }
     
     /**
@@ -176,8 +239,8 @@ public class ServerService {
      * @return 当前服务器是否是等待执行的状态
      */
     public boolean isLocalhostServerReady() {
-        String ip = localHostService.getIp();
-        return isAvailableServer(ip) && ServerStatus.READY.name().equals(jobNodeStorage.getJobNodeData(ServerNode.getStatusNode(ip)));
+        ServerData data = loadServerData(jobRegistry.getJobServerName(jobName));
+        return data != null && !data.isDisabled() && !data.isPaused() && !data.isShutdown() && ServerStatus.READY == data.getStatus();
     }
     
     /**
@@ -186,6 +249,114 @@ public class ServerService {
      * @return 当前服务器是否是启用状态
      */
     public boolean isLocalhostServerEnabled() {
-        return !jobNodeStorage.isJobNodeExisted(ServerNode.getDisabledNode(localHostService.getIp()));
+        ServerData data = loadServerData();
+        if (data == null) {
+            return false;
+        }
+        return !data.isDisabled();
     }
+    
+    /**
+     * 加载当前服务节点数据.
+     * 
+     * @return 当前服务节点数据
+     */
+    public ServerData loadServerData(){
+        return loadServerData(jobRegistry.getJobServerName(jobName));
+    }
+    
+    /**
+     * 加载指定服务节点数据.
+     * 
+     * @param serverName 指定服务节点名称
+     * @return 指定服务节点数据
+     */
+    public ServerData loadServerData(String serverName){
+        String serverData = jobNodeStorage.getJobNodeData(ServerNode.getServerNode(serverName));
+        return ServerDataGsonFactory.fromJson(serverData);
+    }
+    
+    public void updateServerData(ServerData data){
+        updateServerData(jobRegistry.getJobServerName(jobName), data);
+    }
+    
+    public void updateServerData(String serverName, ServerData data){
+        // TODO 有没有并发问题
+        jobNodeStorage.updateJobNode(ServerNode.getServerNode(serverName), ServerDataGsonFactory.toJson(data));
+    }
+    
+    public void removeServerData(){
+        removeServerData(jobRegistry.getJobServerName(jobName));
+    }
+    
+    public void removeServerData(String serverName){
+        jobNodeStorage.removeJobNodeIfExisted(ServerNode.getServerNode(serverName));
+    }
+    
+    /**
+     * 判断服务节点是否变为不可用状态.
+     * 
+     * <p>此时需要重新分片</p>
+     * 
+     * @param serverName 服务节点名称
+     * @return 服务节点是否变为不可用状态
+     */
+    public boolean isShardingServerOff(String serverName) {
+        ServerData data = loadServerData(serverName);
+        return data == null || data.isDisabledWithMark() || data.isShutdownWithMark();
+    }
+    
+    /**
+     * 判断服务节点是否变为可用状态.
+     * 
+     * <p>此时需要重新分片</p>
+     * 
+     * @param serverName 服务节点名称
+     * @return 服务节点是否变为不可用状态
+     */
+    public boolean isShardingServerOn(String serverName) {
+        ServerData data = loadServerData(serverName);
+        return data != null && data.isEnabledWithMark();
+    }
+    
+    /**
+     * 判断当前任务服务节点是否变为停止运行状态
+     * 
+     * @return 当前任务服务节点是否变为停止运行状态
+     */
+    public boolean isServerOff() {
+        return isServerOff(jobRegistry.getJobServerName(jobName));
+    }
+    
+    /**
+     * 判断服务节点是否变为停止运行状态
+     * 
+     * @param serverName 服务节点名称
+     * @return 服务节点是否变为停止运行状态
+     */
+    public boolean isServerOff(String serverName) {
+        ServerData data = loadServerData(serverName);
+        return data == null || data.isDisabledWithMark() || data.isPausedWithMark() || data.isShutdownWithMark();
+    }
+    
+    /**
+     * 判断当前任务服务节点是否变为停止运行状态
+     * 
+     * @return 当前任务服务节点是否变为停止运行状态
+     */
+    public boolean isServerOn() {
+        return isServerOn(jobRegistry.getJobServerName(jobName));
+    }
+    
+    /**
+     * 判断服务节点是否变为停止运行状态
+     * 
+     * @param serverName 服务节点名称
+     * @return 服务节点是否变为停止运行状态
+     */
+    public boolean isServerOn(String serverName) {
+        ServerData data = loadServerData(serverName);
+        return data != null && (data.isEnabledWithMark() || data.isResumedWithMark());
+    }
+    
 }

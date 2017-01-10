@@ -20,10 +20,10 @@ package com.dangdang.ddframe.job.lite.internal.execution;
 import com.dangdang.ddframe.job.executor.ShardingContexts;
 import com.dangdang.ddframe.job.lite.config.LiteJobConfiguration;
 import com.dangdang.ddframe.job.lite.internal.config.ConfigurationService;
+import com.dangdang.ddframe.job.lite.internal.schedule.JobRegistry;
 import com.dangdang.ddframe.job.lite.internal.storage.JobNodeStorage;
 import com.dangdang.ddframe.job.reg.base.CoordinatorRegistryCenter;
 import com.dangdang.ddframe.job.util.config.ShardingItemParameters;
-import com.dangdang.ddframe.job.util.env.LocalHostService;
 import com.google.common.base.Joiner;
 
 import java.util.ArrayList;
@@ -44,12 +44,12 @@ public class ExecutionContextService {
     
     private final ConfigurationService configService;
     
-    private final LocalHostService localHostService;
+    private final String jobName;
     
     public ExecutionContextService(final CoordinatorRegistryCenter regCenter, final String jobName) {
+        this.jobName = jobName;
         jobNodeStorage = new JobNodeStorage(regCenter, jobName);
         configService = new ConfigurationService(regCenter, jobName);
-        localHostService = new LocalHostService();
     }
     
     /**
@@ -71,7 +71,7 @@ public class ExecutionContextService {
     }
     
     private String buildTaskId(final LiteJobConfiguration liteJobConfig, final List<Integer> shardingItems) {
-        return Joiner.on("@-@").join(liteJobConfig.getJobName(), Joiner.on(",").join(shardingItems), "READY", localHostService.getIp(), UUID.randomUUID().toString()); 
+        return Joiner.on("@-@").join(liteJobConfig.getJobName(), Joiner.on(",").join(shardingItems), "READY", JobRegistry.getInstance().getJobServerName(jobName), UUID.randomUUID().toString()); 
     }
     
     private void removeRunningIfMonitorExecution(final boolean monitorExecution, final List<Integer> shardingItems) {

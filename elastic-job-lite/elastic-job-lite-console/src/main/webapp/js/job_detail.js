@@ -90,15 +90,15 @@ function renderServers() {
         $("#servers tbody").empty();
         for (var i = 0;i < data.length;i++) {
             var status = data[i].status;
-            var baseTd = "<td>" + data[i].ip + "</td><td>" + data[i].hostName + "</td><td>" + status + "</td><td>" + data[i].sharding + "</td>";
+            var baseTd = "<td>" + data[i].serverName + "</td><td>" + data[i].hostName + "</td><td>" + status + "</td><td>" + data[i].sharding + "</td>";
             var operationTd = "";
-            var triggerButton = "<button operation='trigger' class='btn btn-success' ip='" + data[i].ip + "'>触发</button>";
-            var resumeButton = "<button operation='resume' class='btn btn-success' ip='" + data[i].ip + "'>恢复</button>";
-            var pauseButton = "<button operation='pause' class='btn btn-warning' ip='" + data[i].ip + "'" + ">暂停</button>";
-            var shutdownButton = "<button operation='shutdown' class='btn btn-danger' ip='" + data[i].ip + "'>关闭</button>";
-            var removeButton = "<button operation='remove' class='btn btn-danger' ip='" + data[i].ip + "'>删除</button>";
-            var disableButton = "<button operation='disable' class='btn btn-danger' ip='" + data[i].ip + "'>失效</button>";
-            var enableButton = "<button operation='enable' class='btn btn-success' ip='" + data[i].ip + "'>生效</button>";
+            var triggerButton = "<button operation='trigger' class='btn btn-success' serverName='" + data[i].serverName + "'>触发</button>";
+            var resumeButton = "<button operation='resume' class='btn btn-success' serverName='" + data[i].serverName + "'>恢复</button>";
+            var pauseButton = "<button operation='pause' class='btn btn-warning' serverName='" + data[i].serverName + "'" + ">暂停</button>";
+            var shutdownButton = "<button operation='shutdown' class='btn btn-danger' serverName='" + data[i].serverName + "'>关闭</button>";
+            var removeButton = "<button operation='remove' class='btn btn-danger' serverName='" + data[i].serverName + "'>删除</button>";
+            var disableButton = "<button operation='disable' class='btn btn-danger' serverName='" + data[i].serverName + "'>失效</button>";
+            var enableButton = "<button operation='enable' class='btn btn-success' serverName='" + data[i].serverName + "'>生效</button>";
             operationTd = triggerButton + "&nbsp;";
             if ("PAUSED" === status) {
                 operationTd = operationTd + resumeButton + "&nbsp;";
@@ -135,7 +135,7 @@ function renderServers() {
 function bindTriggerButtons() {
     $(document).on("click", "button[operation='trigger'][data-toggle!='modal']", function(event) {
         var jobName = $("#job-name").text();
-        $.post("job/trigger", {jobName : jobName, ip : $(event.currentTarget).attr("ip")}, function () {
+        $.post("job/trigger", {jobName : jobName, serverName : $(event.currentTarget).attr("serverName")}, function () {
             renderServers();
             showSuccessDialog();
         });
@@ -155,7 +155,7 @@ function bindTriggerAllButtons() {
 function bindPauseButtons() {
     $(document).on("click", "button[operation='pause'][data-toggle!='modal']", function(event) {
         var jobName = $("#job-name").text();
-        $.post("job/pause", {jobName : jobName, ip : $(event.currentTarget).attr("ip")}, function () {
+        $.post("job/pause", {jobName : jobName, serverName : $(event.currentTarget).attr("serverName")}, function () {
             renderServers();
             showSuccessDialog();
         });
@@ -175,7 +175,7 @@ function bindPauseAllButtons() {
 function bindResumeButtons() {
     $(document).on("click", "button[operation='resume']", function(event) {
         var jobName = $("#job-name").text();
-        $.post("job/resume", {jobName : jobName, ip : $(event.currentTarget).attr("ip")}, function () {
+        $.post("job/resume", {jobName : jobName, serverName : $(event.currentTarget).attr("serverName")}, function () {
             renderServers();
             showSuccessDialog();
         });
@@ -218,7 +218,7 @@ function renderExecution() {
 function bindShutdownButtons() {
     $(document).on("click", "button[operation='shutdown']", function(event) {
         var jobName = $("#job-name").text();
-        $.post("job/shutdown", {jobName : jobName, ip : $(event.currentTarget).attr("ip")}, function () {
+        $.post("job/shutdown", {jobName : jobName, serverName : $(event.currentTarget).attr("serverName")}, function () {
             renderServers();
             showSuccessDialog();
         });
@@ -228,7 +228,7 @@ function bindShutdownButtons() {
 function bindRemoveButtons() {
     $(document).on("click", "button[operation='remove']", function(event) {
         var jobName = $("#job-name").text();
-        $.post("job/remove", {jobName : jobName, ip : $(event.currentTarget).attr("ip")}, function (data) {
+        $.post("job/remove", {jobName : jobName, serverName : $(event.currentTarget).attr("serverName")}, function (data) {
             if (data.length > 0) {
                 showFailureDialog("remove-job-failure-dialog");
             } else {
@@ -242,7 +242,7 @@ function bindRemoveButtons() {
 function bindDisableButtons() {
     $(document).on("click", "button[operation='disable']", function(event) {
         var jobName = $("#job-name").text();
-        $.post("job/disable", {jobName : jobName, ip : $(event.currentTarget).attr("ip")}, function () {
+        $.post("job/disable", {jobName : jobName, serverName : $(event.currentTarget).attr("serverName")}, function () {
             renderServers();
             showSuccessDialog();
         });
@@ -252,7 +252,7 @@ function bindDisableButtons() {
 function bindEnableButtons() {
     $(document).on("click", "button[operation='enable']", function(event) {
         var jobName = $("#job-name").text();
-        $.post("job/enable", {jobName : jobName, ip : $(event.currentTarget).attr("ip")}, function () {
+        $.post("job/enable", {jobName : jobName, serverName : $(event.currentTarget).attr("serverName")}, function () {
             renderServers();
             showSuccessDialog();
         });

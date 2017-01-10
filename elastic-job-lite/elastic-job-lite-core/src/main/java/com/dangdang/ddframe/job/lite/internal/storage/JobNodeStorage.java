@@ -105,6 +105,21 @@ public class JobNodeStorage {
         }
     }
     
+    /**
+     * 如果存在作业根节点则填充临时顺序作业节点数据.
+     * 
+     * <p>如果作业根节点不存在表示作业已经停止, 不再继续创建节点.</p>
+     * 
+     * @param node 作业节点名称
+     * @return 包含10位顺序数字的znode名称
+     */
+    public String fillEphemeralSequentialJobNode(final String node, final String value) {
+        if (isJobRootNodeExisted()) {
+            return regCenter.persistEphemeralSequential(jobNodePath.getFullPath(node), value);
+        }
+        return null;
+    }
+    
     private boolean isJobRootNodeExisted() {
         return regCenter.isExisted("/" + jobName);
     }

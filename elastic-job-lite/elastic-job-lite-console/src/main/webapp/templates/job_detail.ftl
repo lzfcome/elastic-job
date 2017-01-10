@@ -127,7 +127,7 @@
             <table id="servers" class="table table-hover">
                 <thead>
                     <tr>
-                        <th>IP地址</th>
+                        <th>运行实例</th>
                         <th>机器名</th>
                         <th>状态</th>
                         <th>分片项</th>

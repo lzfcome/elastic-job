@@ -24,6 +24,8 @@ import com.dangdang.ddframe.job.lite.config.LiteJobConfiguration;
 import com.dangdang.ddframe.job.lite.internal.config.ConfigurationService;
 import com.dangdang.ddframe.job.lite.internal.election.LeaderElectionService;
 import com.dangdang.ddframe.job.lite.internal.execution.ExecutionService;
+import com.dangdang.ddframe.job.lite.internal.schedule.JobRegistry;
+import com.dangdang.ddframe.job.lite.internal.server.ServerData;
 import com.dangdang.ddframe.job.lite.internal.server.ServerService;
 import com.dangdang.ddframe.job.lite.internal.storage.JobNodePath;
 import com.dangdang.ddframe.job.lite.internal.storage.JobNodeStorage;
@@ -31,7 +33,7 @@ import com.dangdang.ddframe.job.lite.internal.storage.TransactionExecutionCallba
 import com.dangdang.ddframe.job.reg.base.CoordinatorRegistryCenter;
 import com.dangdang.ddframe.job.util.concurrent.BlockUtils;
 import com.dangdang.ddframe.job.util.config.ShardingItems;
-import com.dangdang.ddframe.job.util.env.LocalHostService;
+import com.google.common.base.Strings;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.curator.framework.api.transaction.CuratorTransactionFinal;
@@ -52,8 +54,6 @@ public class ShardingService {
     private final String jobName;
     
     private final JobNodeStorage jobNodeStorage;
-    
-    private final LocalHostService localHostService = new LocalHostService();
     
     private final LeaderElectionService leaderElectionService;
     
@@ -137,7 +137,9 @@ public class ShardingService {
     
     private void clearShardingInfo() {
         for (String each : serverService.getAllServers()) {
-            jobNodeStorage.removeJobNodeIfExisted(ShardingNode.getShardingNode(each));
+            ServerData data = serverService.loadServerData(each);
+            data.setSharding(null);
+            serverService.updateServerData(each, data);
         }
     }
     
@@ -147,11 +149,12 @@ public class ShardingService {
      * @return 运行在本作业服务器的分片序列号
      */
     public List<Integer> getLocalHostShardingItems() {
-        String ip = localHostService.getIp();
-        if (!jobNodeStorage.isJobNodeExisted(ShardingNode.getShardingNode(ip))) {
+        String serverName = JobRegistry.getInstance().getJobServerName(jobName);
+        ServerData data = serverService.loadServerData(serverName);
+        if (data == null || Strings.isNullOrEmpty(data.getSharding())) {
             return Collections.emptyList();
         }
-        return ShardingItems.toItemList(jobNodeStorage.getJobNodeDataDirectly(ShardingNode.getShardingNode(ip)));
+        return ShardingItems.toItemList(data.getSharding());
     }
     
     @RequiredArgsConstructor
@@ -162,7 +165,9 @@ public class ShardingService {
         @Override
         public void execute(final CuratorTransactionFinal curatorTransactionFinal) throws Exception {
             for (Entry<String, List<Integer>> entry : shardingItems.entrySet()) {
-                curatorTransactionFinal.create().forPath(jobNodePath.getFullPath(ShardingNode.getShardingNode(entry.getKey())), ShardingItems.toItemsString(entry.getValue()).getBytes()).and();
+                ServerData data = serverService.loadServerData(entry.getKey());
+                data.setSharding(ShardingItems.toItemsString(entry.getValue()));
+                serverService.updateServerData(entry.getKey(), data);
             }
             curatorTransactionFinal.delete().forPath(jobNodePath.getFullPath(ShardingNode.NECESSARY)).and();
             curatorTransactionFinal.delete().forPath(jobNodePath.getFullPath(ShardingNode.PROCESSING)).and();

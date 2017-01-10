@@ -37,11 +37,8 @@ public class ConfigurationListenerManager extends AbstractListenerManager {
     
     private final ConfigurationNode configNode;
     
-    private final String jobName;
-    
     public ConfigurationListenerManager(final CoordinatorRegistryCenter regCenter, final String jobName) {
         super(regCenter, jobName);
-        this.jobName = jobName;
         configNode = new ConfigurationNode(jobName);
     }
     

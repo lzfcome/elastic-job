@@ -17,6 +17,8 @@
 
 package com.dangdang.ddframe.job.lite.lifecycle.internal.statistics;
 
+import com.dangdang.ddframe.job.lite.internal.server.ServerData;
+import com.dangdang.ddframe.job.lite.internal.server.ServerDataGsonFactory;
 import com.dangdang.ddframe.job.lite.internal.storage.JobNodePath;
 import com.dangdang.ddframe.job.lite.lifecycle.api.ServerStatisticsAPI;
 import com.dangdang.ddframe.job.lite.lifecycle.domain.ServerBriefInfo;
@@ -51,9 +53,14 @@ public final class ServerStatisticsAPIImpl implements ServerStatisticsAPI {
             JobNodePath jobNodePath = new JobNodePath(jobName);
             List<String> servers = regCenter.getChildrenKeys(jobNodePath.getServerNodePath());
             for (String server : servers) {
-                serverHostMap.put(server, regCenter.get(jobNodePath.getServerNodePath(server, "hostName")));
-                if (!regCenter.isExisted(jobNodePath.getServerNodePath(server, "shutdown")) && regCenter.isExisted(jobNodePath.getServerNodePath(server, "status"))) {
-                    aliveServers.add(server);
+                ServerData data = ServerDataGsonFactory.fromJson(regCenter.get(jobNodePath.getServerNodePath(server)));
+                if (data != null) {
+                    serverHostMap.put(server, data.getHostName());
+                    if (!data.isDisabled()) {
+                        aliveServers.add(server);
+                    } else {
+                        crashedServers.add(server);
+                    }
                 } else {
                     crashedServers.add(server);
                 }
@@ -76,30 +83,32 @@ public final class ServerStatisticsAPIImpl implements ServerStatisticsAPI {
     }
     
     @Override
-    public Collection<ServerInfo> getJobs(final String serverIp) {
+    public Collection<ServerInfo> getJobs(final String serverName) {
         List<String> jobs = regCenter.getChildrenKeys("/");
         Collection<ServerInfo> result = new ArrayList<>(jobs.size());
         for (String each : jobs) {
             JobNodePath jobNodePath = new JobNodePath(each);
-            if (regCenter.isExisted(jobNodePath.getServerNodePath(serverIp))) {
-                result.add(getJob(serverIp, each));
+            if (regCenter.isExisted(jobNodePath.getServerNodePath(serverName))) {
+                result.add(getJob(serverName, each));
             }
         }
         return result;
     }
     
-    private ServerInfo getJob(final String serverIp, final String jobName) {
+    private ServerInfo getJob(final String serverName, final String jobName) {
         ServerInfo result = new ServerInfo();
         JobNodePath jobNodePath = new JobNodePath(jobName);
         result.setJobName(jobName);
-        result.setIp(serverIp);
-        result.setHostName(regCenter.get(jobNodePath.getServerNodePath(serverIp, "hostName")));
-        result.setSharding(regCenter.get(jobNodePath.getServerNodePath(serverIp, "sharding")));
-        String status = regCenter.get(jobNodePath.getServerNodePath(serverIp, "status"));
-        boolean disabled = regCenter.isExisted(jobNodePath.getServerNodePath(serverIp, "disabled"));
-        boolean paused = regCenter.isExisted(jobNodePath.getServerNodePath(serverIp, "paused"));
-        boolean shutdown = regCenter.isExisted(jobNodePath.getServerNodePath(serverIp, "shutdown"));
-        result.setStatus(ServerInfo.ServerStatus.getServerStatus(status, disabled, paused, shutdown));
+        result.setServerName(serverName);
+        ServerData data = ServerDataGsonFactory.fromJson(regCenter.get(jobNodePath.getServerNodePath(serverName)));
+        result.setIp(data.getHostIP());
+        result.setHostName(data.getHostName());
+        result.setSharding(data.getSharding());
+        result.setStatus(getServerStatus(data));
         return result;
+    }
+    
+    private ServerInfo.ServerStatus getServerStatus(final ServerData data) {
+        return ServerInfo.ServerStatus.getServerStatus(data.getStatus().name(), data.isDisabled(), data.isPaused(), data.isShutdown());
     }
 }

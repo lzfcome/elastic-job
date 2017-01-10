@@ -36,6 +36,8 @@ public final class JobRegistry {
     
     private Map<String, JobScheduleController> schedulerMap = new ConcurrentHashMap<>();
     
+    private final Map<String, String> serverNameMap = new ConcurrentHashMap<>();
+    
     /**
      * 获取作业注册表实例.
      * 
@@ -70,5 +72,34 @@ public final class JobRegistry {
      */
     public JobScheduleController getJobScheduleController(final String jobName) {
         return schedulerMap.get(jobName);
+    }
+    
+    /**
+     * 增加作业服务器名称
+     * 
+     * @param jobName 作业名称
+     * @param serverName 作业服务器名称
+     */
+    public void addJobServerName(String jobName, String serverName) {
+        serverNameMap.put(jobName, serverName);
+    }
+    
+    /**
+     * 获取作业服务器名称
+     * 
+     * @param jobName 作业名称
+     * @return 作业服务器名称
+     */
+    public String getJobServerName(final String jobName) {
+        return serverNameMap.get(jobName);
+    }
+    
+    /**
+     * 移除作业服务器名称
+     * 
+     * @param jobName 作业名称
+     */
+    public void removeJobServerName(String jobName) {
+        serverNameMap.remove(jobName);
     }
 }

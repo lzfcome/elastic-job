@@ -62,10 +62,10 @@ public class SchedulerFacade {
     }
     
     /**
-     * 每次作业启动前清理上次运行状态.
+     * 初始化作业server节点
      */
-    public void clearPreviousServerStatus() {
-        serverService.clearPreviousServerStatus();
+    public void init(final LiteJobConfiguration liteJobConfig) {
+        serverService.prepareServerNode(!liteJobConfig.isDisabled());
     }
     
     /**
@@ -77,8 +77,6 @@ public class SchedulerFacade {
         listenerManager.startAllListeners();
         leaderElectionService.leaderForceElection();
         configService.persist(liteJobConfig);
-        serverService.persistServerOnline(!liteJobConfig.isDisabled());
-        serverService.clearJobPausedStatus();
         shardingService.setReshardingFlag();
         monitorService.listen();
         listenerManager.setCurrentShardingTotalCount(configService.load(false).getTypeConfig().getCoreConfig().getShardingTotalCount());

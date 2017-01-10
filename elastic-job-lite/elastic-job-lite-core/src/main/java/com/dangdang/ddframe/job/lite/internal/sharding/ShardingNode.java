@@ -37,8 +37,11 @@ final class ShardingNode {
     
     static final String PROCESSING = LEADER_SHARDING_ROOT + "/processing";
     
+    static final String SERVER_SHARDING_APPENDIX = "sharding";
+    
     private static final String SERVER_SHARDING = ServerNode.ROOT + "/%s/sharding";
     
+    @Deprecated
     static String getShardingNode(final String ip) {
         return String.format(SERVER_SHARDING, ip);
     }
