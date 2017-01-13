@@ -18,7 +18,6 @@
 package com.dangdang.ddframe.job.lite.internal.server;
 
 import org.junit.Test;
-import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -35,11 +34,6 @@ public final class ServerNodeTest {
     @BeforeClass
     public static void before(){
         JobRegistry.getInstance().addJobServerName("test_job", "host0_0001");
-    }
-    
-    @AfterClass
-    public static void after(){
-        JobRegistry.getInstance().removeJobServerName("test_job");
     }
     
     @Test

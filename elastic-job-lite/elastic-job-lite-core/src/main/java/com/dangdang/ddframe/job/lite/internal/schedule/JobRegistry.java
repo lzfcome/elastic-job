@@ -94,12 +94,4 @@ public final class JobRegistry {
         return serverNameMap.get(jobName);
     }
     
-    /**
-     * 移除作业服务器名称
-     * 
-     * @param jobName 作业名称
-     */
-    public void removeJobServerName(String jobName) {
-        serverNameMap.remove(jobName);
-    }
 }

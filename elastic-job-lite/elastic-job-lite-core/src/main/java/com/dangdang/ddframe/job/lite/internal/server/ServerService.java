@@ -56,23 +56,28 @@ public class ServerService {
      * @param enabled 是否启用job
      */
     public void prepareServerNode(final boolean enabled) {
-        if (Strings.isNullOrEmpty(jobRegistry.getJobServerName(jobName))) {
+        createServerData(enabled);
+    }
+    
+    /**
+     * 修复作业server节点, 节点名称格式为ip_seq.
+     * 
+     * @param enabled 是否启用job
+     */
+    public void repairServerNode(final boolean enabled) {
+        if (!jobNodeStorage.isJobNodeExisted(ServerNode.getServerNode(jobRegistry.getJobServerName(jobName)))) {
             createServerData(enabled);
         } else {
-            if (!jobNodeStorage.isJobNodeExisted(ServerNode.getServerNode(jobRegistry.getJobServerName(jobName)))) {
-                createServerData(enabled);
+            ServerData data = loadServerData();
+            if (null != data) {
+                data.setStatus(ServerStatus.READY);
             } else {
-                ServerData data = loadServerData();
-                if (null != data) {
-                    data.setStatus(ServerStatus.READY);
-                } else {
-                    data = new ServerData(localHostService.getHostName(), localHostService.getIp(), !enabled);
-                }
-                updateServerData(data);
+                data = new ServerData(localHostService.getHostName(), localHostService.getIp(), !enabled);
             }
+            updateServerData(data);
         }
     }
-
+    
     private void createServerData(final boolean enabled) {
         ServerData data = new ServerData(localHostService.getHostName(), localHostService.getIp(), !enabled);
         String serverNodePath = jobNodeStorage.fillEphemeralSequentialJobNode(ServerNode.getServerBaseNode(localHostService.getIp()), ServerDataGsonFactory.toJson(data));
@@ -89,7 +94,7 @@ public class ServerService {
         if (data == null) {
             return;
         }
-        data.setTriggerAndRemoveMark(false);
+        data.removeTriggeredMark();
         updateServerData(data);
     }
     
@@ -101,12 +106,12 @@ public class ServerService {
         if (data == null) {
             return;
         }
-        data.setPausedAndRemoveMark(false);
+        data.removePausedMark();
         updateServerData(data);
     }
     
     /**
-     * 清除暂停作业的标记.
+     * 清除作业状态变更的标记.
      */
     public void clearJobStatusMark() {
         ServerData data = loadServerData();
@@ -138,7 +143,7 @@ public class ServerService {
         if (data == null) {
             return;
         }
-        data.setShutdownAndRemoveMark(false);
+        data.removeShutdownMark();
         updateServerData(data);
     }
     
@@ -162,7 +167,6 @@ public class ServerService {
     
     public void removeServerStatus() {
         removeServerData();
-        jobRegistry.removeJobServerName(jobName);
     }
     
     /**
@@ -185,14 +189,14 @@ public class ServerService {
         List<String> servers = getAllServers();
         List<String> result = new ArrayList<>(servers.size());
         for (String each : servers) {
-            if (isAvailableShardingServer(each)) {
+            if (isShardingServerAvailable(each)) {
                 result.add(each);
             }
         }
         return result;
     }
     
-    private boolean isAvailableShardingServer(final String serverName) {
+    private boolean isShardingServerAvailable(final String serverName) {
         ServerData data = loadServerData(serverName);
         return data != null && !data.isDisabled() && !data.isShutdown();
     }
@@ -206,7 +210,7 @@ public class ServerService {
         List<String> servers = getAllServers();
         List<String> result = new ArrayList<>(servers.size());
         for (String each : servers) {
-            if (isAvailableServer(each)) {
+            if (isServerAvailable(each)) {
                 result.add(each);
             }
         }
@@ -218,8 +222,8 @@ public class ServerService {
      * 
      * @return 作业服务器是否可用
      */
-    public boolean isAvailableServer() {
-        return isAvailableServer(jobRegistry.getJobServerName(jobName));
+    public boolean isServerAvailable() {
+        return isServerAvailable(jobRegistry.getJobServerName(jobName));
     }
     
     /**
@@ -228,7 +232,7 @@ public class ServerService {
      * @param serverName 作业服务器名称
      * @return 作业服务器是否可用
      */
-    public boolean isAvailableServer(final String serverName) {
+    public boolean isServerAvailable(final String serverName) {
         ServerData data = loadServerData(serverName);
         return data != null && !data.isDisabled() && !data.isPaused() && !data.isShutdown();
     }
@@ -238,7 +242,7 @@ public class ServerService {
      * 
      * @return 当前服务器是否是等待执行的状态
      */
-    public boolean isLocalhostServerReady() {
+    public boolean isServerReady() {
         ServerData data = loadServerData(jobRegistry.getJobServerName(jobName));
         return data != null && !data.isDisabled() && !data.isPaused() && !data.isShutdown() && ServerStatus.READY == data.getStatus();
     }
@@ -257,29 +261,39 @@ public class ServerService {
     }
     
     /**
-     * 加载当前服务节点数据.
+     * 加载当前服务器数据.
      * 
-     * @return 当前服务节点数据
+     * @return 当前服务器数据
      */
     public ServerData loadServerData(){
         return loadServerData(jobRegistry.getJobServerName(jobName));
     }
     
     /**
-     * 加载指定服务节点数据.
+     * 加载指定服务器数据.
      * 
-     * @param serverName 指定服务节点名称
-     * @return 指定服务节点数据
+     * @param serverName 指定服务器名称
+     * @return 指定服务器数据
      */
     public ServerData loadServerData(String serverName){
-        String serverData = jobNodeStorage.getJobNodeData(ServerNode.getServerNode(serverName));
-        return ServerDataGsonFactory.fromJson(serverData);
+        return ServerDataGsonFactory.fromJson(jobNodeStorage.getJobNodeData(ServerNode.getServerNode(serverName)));
     }
     
+    /**
+     * 更新当前服务器数据
+     * 
+     * @param data 服务器数据
+     */
     public void updateServerData(ServerData data){
         updateServerData(jobRegistry.getJobServerName(jobName), data);
     }
     
+    /**
+     * 更新指定服务器数据
+     * 
+     * @param serverName 服务器名称
+     * @param data 服务器数据
+     */
     public void updateServerData(String serverName, ServerData data){
         // TODO 有没有并发问题
         jobNodeStorage.updateJobNode(ServerNode.getServerNode(serverName), ServerDataGsonFactory.toJson(data));
@@ -294,12 +308,12 @@ public class ServerService {
     }
     
     /**
-     * 判断服务节点是否变为不可用状态.
+     * 判断服务器是否变为不可用状态.
      * 
      * <p>此时需要重新分片</p>
      * 
-     * @param serverName 服务节点名称
-     * @return 服务节点是否变为不可用状态
+     * @param serverName 服务器名称
+     * @return 服务器是否变为不可用状态
      */
     public boolean isShardingServerOff(String serverName) {
         ServerData data = loadServerData(serverName);
@@ -307,12 +321,12 @@ public class ServerService {
     }
     
     /**
-     * 判断服务节点是否变为可用状态.
+     * 判断服务器是否变为可用状态.
      * 
      * <p>此时需要重新分片</p>
      * 
-     * @param serverName 服务节点名称
-     * @return 服务节点是否变为不可用状态
+     * @param serverName 服务器名称
+     * @return 服务器是否变为不可用状态
      */
     public boolean isShardingServerOn(String serverName) {
         ServerData data = loadServerData(serverName);
@@ -320,19 +334,19 @@ public class ServerService {
     }
     
     /**
-     * 判断当前任务服务节点是否变为停止运行状态
+     * 判断任务当前服务器是否变为停止运行状态
      * 
-     * @return 当前任务服务节点是否变为停止运行状态
+     * @return 当前任务服务器是否变为停止运行状态
      */
     public boolean isServerOff() {
         return isServerOff(jobRegistry.getJobServerName(jobName));
     }
     
     /**
-     * 判断服务节点是否变为停止运行状态
+     * 判断服务器是否变为停止运行状态
      * 
-     * @param serverName 服务节点名称
-     * @return 服务节点是否变为停止运行状态
+     * @param serverName 服务器名称
+     * @return 服务器是否变为停止运行状态
      */
     public boolean isServerOff(String serverName) {
         ServerData data = loadServerData(serverName);
@@ -340,19 +354,19 @@ public class ServerService {
     }
     
     /**
-     * 判断当前任务服务节点是否变为停止运行状态
+     * 判断任务当前服务器是否变为可运行状态
      * 
-     * @return 当前任务服务节点是否变为停止运行状态
+     * @return 当前任务服务器是否变为停止运行状态
      */
     public boolean isServerOn() {
         return isServerOn(jobRegistry.getJobServerName(jobName));
     }
     
     /**
-     * 判断服务节点是否变为停止运行状态
+     * 判断服务器是否变为可运行状态
      * 
-     * @param serverName 服务节点名称
-     * @return 服务节点是否变为停止运行状态
+     * @param serverName 服务器名称
+     * @return 服务器是否变为停止运行状态
      */
     public boolean isServerOn(String serverName) {
         ServerData data = loadServerData(serverName);

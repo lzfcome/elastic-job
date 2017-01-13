@@ -38,16 +38,6 @@ public class ServerNode {
     
     static final String SERVER_NAME = ROOT + "/%s";
     
-    static final String STATUS_APPENDIX = "status";
-    
-    static final String TRIGGER_APPENDIX = "trigger";
-    
-    static final String DISABLED_APPENDIX = "disabled";
-    
-    static final String PAUSED_APPENDIX = "paused";
-    
-    static final String SHUTDOWN_APPENDIX = "shutdown";
-    
     private final String jobName;
     
     private final JobNodePath jobNodePath;

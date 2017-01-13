@@ -92,11 +92,11 @@ public final class ServerServiceTest {
     public void assertClearJobTriggerStatus() {
         JobRegistry.getInstance().addJobServerName("test_job", "mockedIP_0001");
         ServerData data = new ServerData("mockedHostName", "mockedIP", false);
-        data.setTriggerAndMark(true);
+        data.markTriggered();
         when(jobNodeStorage.getJobNodeData("servers/mockedIP_0001")).thenReturn(ServerDataGsonFactory.toJson(data));
         serverService.clearJobTriggerStatus();
         verify(jobNodeStorage).getJobNodeData("servers/mockedIP_0001");
-        data.setTriggerAndRemoveMark(false);
+        data.removeTriggeredMark();
         verify(jobNodeStorage).updateJobNode("servers/mockedIP_0001", ServerDataGsonFactory.toJson(data));
     }
     
@@ -104,11 +104,11 @@ public final class ServerServiceTest {
     public void assertClearJobPausedStatus() {
         JobRegistry.getInstance().addJobServerName("test_job", "mockedIP_0001");
         ServerData data = new ServerData("mockedHostName", "mockedIP", false);
-        data.setPausedAndMark(true);
+        data.markPaused();
         when(jobNodeStorage.getJobNodeData("servers/mockedIP_0001")).thenReturn(ServerDataGsonFactory.toJson(data));
         serverService.clearJobPausedStatus();
         verify(jobNodeStorage).getJobNodeData("servers/mockedIP_0001");
-        data.setPausedAndRemoveMark(false);
+        data.removePausedMark();
         verify(jobNodeStorage).updateJobNode("servers/mockedIP_0001", ServerDataGsonFactory.toJson(data));
     }
     
@@ -116,7 +116,7 @@ public final class ServerServiceTest {
     public void assertIsJobPausedManually() {
         JobRegistry.getInstance().addJobServerName("test_job", "mockedIP_0001");
         ServerData data = new ServerData("mockedHostName", "mockedIP", false);
-        data.setPausedAndMark(true);
+        data.markPaused();
         when(jobNodeStorage.getJobNodeData("servers/mockedIP_0001")).thenReturn(ServerDataGsonFactory.toJson(data));
         assertTrue(serverService.isJobPausedManually());
         verify(jobNodeStorage).getJobNodeData("servers/mockedIP_0001");
@@ -126,11 +126,11 @@ public final class ServerServiceTest {
     public void assertProcessServerShutdown() {
         JobRegistry.getInstance().addJobServerName("test_job", "mockedIP_0001");
         ServerData data = new ServerData("mockedHostName", "mockedIP", false);
-        data.setShutdownAndMark(true);
+        data.markShutdown();
         when(jobNodeStorage.getJobNodeData("servers/mockedIP_0001")).thenReturn(ServerDataGsonFactory.toJson(data));
         serverService.processServerShutdown();
         verify(jobNodeStorage).getJobNodeData("servers/mockedIP_0001");
-        data.setShutdownAndRemoveMark(false);
+        data.removeShutdownMark();
         verify(jobNodeStorage).updateJobNode("servers/mockedIP_0001", ServerDataGsonFactory.toJson(data));
     }
     
@@ -163,11 +163,11 @@ public final class ServerServiceTest {
     public void assertGetAvailableShardingServers() {
         when(jobNodeStorage.getJobNodeChildrenKeys("servers")).thenReturn(Arrays.asList("host0_001", "host0_002", "host1_001", "host3_001", "host2_001"));
         ServerData data0_0 = new ServerData("host0", "host0", false);
-        data0_0.setDisabledAndMark(true);
+        data0_0.markDisabled();
         ServerData data0_1 = new ServerData("host0", "host0", false);
         ServerData data1 = new ServerData("host0", "host1", false);
         ServerData data2 = new ServerData("host0", "host2", false);
-        data2.setShutdownAndMark(true);
+        data2.markShutdown();
         when(jobNodeStorage.getJobNodeData("servers/host0_001")).thenReturn(ServerDataGsonFactory.toJson(data0_0));
         when(jobNodeStorage.getJobNodeData("servers/host0_002")).thenReturn(ServerDataGsonFactory.toJson(data0_1));
         when(jobNodeStorage.getJobNodeData("servers/host1_001")).thenReturn(ServerDataGsonFactory.toJson(data1));
@@ -186,13 +186,13 @@ public final class ServerServiceTest {
     public void assertGetAvailableServers() {
         when(jobNodeStorage.getJobNodeChildrenKeys("servers")).thenReturn(Arrays.asList("host0_001", "host0_002", "host1_001", "host3_001", "host2_001", "host4_001"));
         ServerData data0_0 = new ServerData("host0", "host0", false);
-        data0_0.setDisabledAndMark(true);
+        data0_0.markDisabled();
         ServerData data0_1 = new ServerData("host0", "host0", false);
         ServerData data1 = new ServerData("host0", "host1", false);
         ServerData data2 = new ServerData("host0", "host2", false);
-        data2.setShutdownAndMark(true);
+        data2.markShutdown();
         ServerData data4 = new ServerData("host0", "host4", false);
-        data4.setPausedAndMark(true);
+        data4.markPaused();
         when(jobNodeStorage.getJobNodeData("servers/host0_001")).thenReturn(ServerDataGsonFactory.toJson(data0_0));
         when(jobNodeStorage.getJobNodeData("servers/host0_002")).thenReturn(ServerDataGsonFactory.toJson(data0_1));
         when(jobNodeStorage.getJobNodeData("servers/host1_001")).thenReturn(ServerDataGsonFactory.toJson(data1));
@@ -212,7 +212,7 @@ public final class ServerServiceTest {
         JobRegistry.getInstance().addJobServerName("test_job", "host0_0001");
         ServerData data = new ServerData("host0", "host0", false);
         when(jobNodeStorage.getJobNodeData("servers/host0_0001")).thenReturn(ServerDataGsonFactory.toJson(data));
-        assertTrue(serverService.isAvailableServer());
+        assertTrue(serverService.isServerAvailable());
         verify(jobNodeStorage).getJobNodeData("servers/host0_0001");
     }
     
@@ -220,7 +220,7 @@ public final class ServerServiceTest {
     public void assertIsAvailableServerForOther() {
         ServerData data = new ServerData("host0", "host0", false);
         when(jobNodeStorage.getJobNodeData("servers/host0_0001")).thenReturn(ServerDataGsonFactory.toJson(data));
-        assertTrue(serverService.isAvailableServer("host0_0001"));
+        assertTrue(serverService.isServerAvailable("host0_0001"));
         verify(jobNodeStorage).getJobNodeData("servers/host0_0001");
     }
     
@@ -228,7 +228,7 @@ public final class ServerServiceTest {
     public void assertIsLocalhostServerReadyWhenServerCrashed() {
         JobRegistry.getInstance().addJobServerName("test_job", "host0_0001");
         when(jobNodeStorage.getJobNodeData("servers/host0_0001")).thenReturn(null);
-        assertFalse(serverService.isLocalhostServerReady());
+        assertFalse(serverService.isServerReady());
         verify(jobNodeStorage).getJobNodeData("servers/host0_0001");
     }
     
@@ -236,9 +236,9 @@ public final class ServerServiceTest {
     public void assertIsLocalhostServerReadyWhenServerPaused() {
         JobRegistry.getInstance().addJobServerName("test_job", "host0_0001");
         ServerData data = new ServerData("host0", "host0", false);
-        data.setPausedAndMark(true);
+        data.markPaused();
         when(jobNodeStorage.getJobNodeData("servers/host0_0001")).thenReturn(ServerDataGsonFactory.toJson(data));
-        assertFalse(serverService.isLocalhostServerReady());
+        assertFalse(serverService.isServerReady());
         verify(jobNodeStorage).getJobNodeData("servers/host0_0001");
     }
     
@@ -246,9 +246,9 @@ public final class ServerServiceTest {
     public void assertIsLocalhostServerReadyWhenServerDisabled() {
         JobRegistry.getInstance().addJobServerName("test_job", "host0_0001");
         ServerData data = new ServerData("host0", "host0", false);
-        data.setDisabledAndMark(true);
+        data.markDisabled();
         when(jobNodeStorage.getJobNodeData("servers/host0_0001")).thenReturn(ServerDataGsonFactory.toJson(data));
-        assertFalse(serverService.isLocalhostServerReady());
+        assertFalse(serverService.isServerReady());
         verify(jobNodeStorage).getJobNodeData("servers/host0_0001");
     }
     
@@ -256,9 +256,9 @@ public final class ServerServiceTest {
     public void assertIsLocalhostServerReadyWhenServerShutdown() {
         JobRegistry.getInstance().addJobServerName("test_job", "host0_0001");
         ServerData data = new ServerData("host0", "host0", false);
-        data.setShutdownAndMark(true);
+        data.markShutdown();
         when(jobNodeStorage.getJobNodeData("servers/host0_0001")).thenReturn(ServerDataGsonFactory.toJson(data));
-        assertFalse(serverService.isLocalhostServerReady());
+        assertFalse(serverService.isServerReady());
         verify(jobNodeStorage).getJobNodeData("servers/host0_0001");
     }
     
@@ -268,7 +268,7 @@ public final class ServerServiceTest {
         ServerData data = new ServerData("host0", "host0", false);
         data.setStatus(ServerStatus.RUNNING);
         when(jobNodeStorage.getJobNodeData("servers/host0_0001")).thenReturn(ServerDataGsonFactory.toJson(data));
-        assertFalse(serverService.isLocalhostServerReady());
+        assertFalse(serverService.isServerReady());
         verify(jobNodeStorage).getJobNodeData("servers/host0_0001");
     }
     
@@ -277,7 +277,7 @@ public final class ServerServiceTest {
         JobRegistry.getInstance().addJobServerName("test_job", "host0_0001");
         ServerData data = new ServerData("host0", "host0", false);
         when(jobNodeStorage.getJobNodeData("servers/host0_0001")).thenReturn(ServerDataGsonFactory.toJson(data));
-        assertTrue(serverService.isLocalhostServerReady());
+        assertTrue(serverService.isServerReady());
         verify(jobNodeStorage).getJobNodeData("servers/host0_0001");
     }
     

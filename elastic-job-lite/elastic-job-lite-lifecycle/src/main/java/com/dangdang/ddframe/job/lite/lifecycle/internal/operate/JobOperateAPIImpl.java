@@ -42,7 +42,7 @@ public final class JobOperateAPIImpl implements JobOperateAPI {
         jobOperatorTemplate = new JobOperateTemplate(regCenter);
     }
     
-    abstract class AbstractJobOperateCallback implements JobOperateCallback {
+    private abstract class AbstractJobStatusOperateCallback implements JobOperateCallback {
     
         @Override
         public boolean doOperate(String jobName, String serverName) {
@@ -59,60 +59,60 @@ public final class JobOperateAPIImpl implements JobOperateAPI {
     
     @Override
     public void trigger(final Optional<String> jobName, final Optional<String> serverName) {
-        jobOperatorTemplate.operate(jobName, serverName, new AbstractJobOperateCallback() {
+        jobOperatorTemplate.operate(jobName, serverName, new AbstractJobStatusOperateCallback() {
             @Override
             protected void changeStatus(ServerData data) {
-                data.setTriggerAndMark(true);
+                data.markTriggered();
             }
         });
     }
     
     @Override
     public void pause(final Optional<String> jobName, final Optional<String> serverName) {
-        jobOperatorTemplate.operate(jobName, serverName, new AbstractJobOperateCallback() {
+        jobOperatorTemplate.operate(jobName, serverName, new AbstractJobStatusOperateCallback() {
             @Override
             protected void changeStatus(ServerData data) {
-                data.setPausedAndMark(true);
+                data.markPaused();
             }
         });
     }
     
     @Override
     public void resume(final Optional<String> jobName, final Optional<String> serverName) {
-        jobOperatorTemplate.operate(jobName, serverName, new AbstractJobOperateCallback() {
+        jobOperatorTemplate.operate(jobName, serverName, new AbstractJobStatusOperateCallback() {
             @Override
             protected void changeStatus(ServerData data) {
-                data.setPausedAndMark(false);
+                data.markResumed();
             }
         });
     }
     
     @Override
     public void disable(final Optional<String> jobName, final Optional<String> serverName) {
-        jobOperatorTemplate.operate(jobName, serverName, new AbstractJobOperateCallback() {
+        jobOperatorTemplate.operate(jobName, serverName, new AbstractJobStatusOperateCallback() {
             @Override
             protected void changeStatus(ServerData data) {
-                data.setDisabledAndMark(true);
+                data.markDisabled();
             }
         });
     }
     
     @Override
     public void enable(final Optional<String> jobName, final Optional<String> serverName) {
-        jobOperatorTemplate.operate(jobName, serverName, new AbstractJobOperateCallback() {
+        jobOperatorTemplate.operate(jobName, serverName, new AbstractJobStatusOperateCallback() {
             @Override
             protected void changeStatus(ServerData data) {
-                data.setDisabledAndMark(false);
+                data.markEnabled();
             }
         });
     }
     
     @Override
     public void shutdown(final Optional<String> jobName, final Optional<String> serverName) {
-        jobOperatorTemplate.operate(jobName, serverName, new AbstractJobOperateCallback() {
+        jobOperatorTemplate.operate(jobName, serverName, new AbstractJobStatusOperateCallback() {
             @Override
             protected void changeStatus(ServerData data) {
-                data.setShutdownAndMark(true);
+                data.markShutdown();
             }
         });
     }
@@ -125,8 +125,8 @@ public final class JobOperateAPIImpl implements JobOperateAPI {
             public boolean doOperate(final String jobName, final String serverName) {
                 JobNodePath jobNodePath = new JobNodePath(jobName);
                 ServerService serverService = new ServerService(regCenter, jobName);
-                ServerData data = serverService.loadServerData();
-                if(data!=null || regCenter.isExisted(jobNodePath.getLeaderHostNodePath())){
+                //TODO 这里有逻辑上的问题
+                if (regCenter.isExisted(jobNodePath.getServerNodePath(serverName)) || regCenter.isExisted(jobNodePath.getLeaderHostNodePath())) {
                     return false;
                 }
                 serverService.removeServerData(serverName);

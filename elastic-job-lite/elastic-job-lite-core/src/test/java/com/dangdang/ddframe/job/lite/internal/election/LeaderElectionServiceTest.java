@@ -83,7 +83,7 @@ public final class LeaderElectionServiceTest {
     @Test
     public void assertLeaderElectionExecutionCallbackWithoutLeaderAndIsAvailableServer() {
         when(jobNodeStorage.isJobNodeExisted("leader/election/host")).thenReturn(false);
-        when(serverService.isAvailableServer("mockedIP")).thenReturn(true);
+        when(serverService.isServerAvailable("mockedIP")).thenReturn(true);
         leaderElectionService.new LeaderElectionExecutionCallback(false).execute();
         verify(jobNodeStorage).isJobNodeExisted("leader/election/host");
         verify(jobNodeStorage).fillEphemeralJobNode("leader/election/host", "mockedIP");
@@ -92,7 +92,7 @@ public final class LeaderElectionServiceTest {
     @Test
     public void assertLeaderElectionExecutionCallbackWithoutLeaderAndIsNotAvailableServer() {
         when(jobNodeStorage.isJobNodeExisted("leader/election/host")).thenReturn(false);
-        when(serverService.isAvailableServer("mockedIP")).thenReturn(false);
+        when(serverService.isServerAvailable("mockedIP")).thenReturn(false);
         leaderElectionService.new LeaderElectionExecutionCallback(false).execute();
         verify(jobNodeStorage).isJobNodeExisted("leader/election/host");
         verify(jobNodeStorage, times(0)).fillEphemeralJobNode("leader/election/host", "mockedIP");
@@ -101,7 +101,7 @@ public final class LeaderElectionServiceTest {
     @Test
     public void assertLeaderForceElectionExecutionCallbackWithoutLeaderAndIsNotAvailableServer() {
         when(jobNodeStorage.isJobNodeExisted("leader/election/host")).thenReturn(false);
-        when(serverService.isAvailableServer("mockedIP")).thenReturn(false);
+        when(serverService.isServerAvailable("mockedIP")).thenReturn(false);
         leaderElectionService.new LeaderElectionExecutionCallback(true).execute();
         verify(jobNodeStorage).isJobNodeExisted("leader/election/host");
         verify(jobNodeStorage).fillEphemeralJobNode("leader/election/host", "mockedIP");

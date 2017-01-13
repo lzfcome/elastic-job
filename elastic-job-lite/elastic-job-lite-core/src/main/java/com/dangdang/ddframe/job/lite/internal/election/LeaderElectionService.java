@@ -107,7 +107,7 @@ public class LeaderElectionService {
     
         @Override
         public void execute() {
-            if (!jobNodeStorage.isJobNodeExisted(ElectionNode.LEADER_HOST) && (isForceElect || serverService.isAvailableServer(JobRegistry.getInstance().getJobServerName(jobName)))) {
+            if (!jobNodeStorage.isJobNodeExisted(ElectionNode.LEADER_HOST) && (isForceElect || serverService.isServerAvailable(JobRegistry.getInstance().getJobServerName(jobName)))) {
                 jobNodeStorage.fillEphemeralJobNode(ElectionNode.LEADER_HOST, JobRegistry.getInstance().getJobServerName(jobName));
             }
         }

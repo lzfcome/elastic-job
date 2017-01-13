@@ -71,7 +71,7 @@ public class JobOperationListenerManager extends AbstractListenerManager {
             if (ConnectionState.LOST == newState) {
                 jobScheduleController.pauseJob();
             } else if (ConnectionState.RECONNECTED == newState) {
-                serverService.prepareServerNode(!configService.load(true).isDisabled());
+                serverService.repairServerNode(!configService.load(true).isDisabled());
                 executionService.clearRunningInfo(shardingService.getLocalHostShardingItems());
                 if (!serverService.isJobPausedManually()) {
                     jobScheduleController.resumeJob();
@@ -87,16 +87,16 @@ public class JobOperationListenerManager extends AbstractListenerManager {
             if (!serverNode.isLocalJobPath(path)) {
                 return;
             }
-            JobScheduleController jobScheduleController = JobRegistry.getInstance().getJobScheduleController(jobName);
-            boolean hasJobScheduleController = jobScheduleController != null;
             if (Type.NODE_UPDATED == event.getType()) {
+                JobScheduleController jobScheduleController = JobRegistry.getInstance().getJobScheduleController(jobName);
+                boolean hasJobScheduleController = jobScheduleController != null;
                 ServerData data = serverService.loadServerData();
                 if (data == null) {
                     return;
                 }
-                if (data.isTriggerWithMark()) {
+                if (data.isTriggeredWithMark()) {
                     serverService.clearJobTriggerStatus();
-                    if (hasJobScheduleController && serverService.isLocalhostServerReady()) {
+                    if (hasJobScheduleController && serverService.isServerReady()) {
                         jobScheduleController.triggerJob();
                     }
                 } else if (hasJobScheduleController) {

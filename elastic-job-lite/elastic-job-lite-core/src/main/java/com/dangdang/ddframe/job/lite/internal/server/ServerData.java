@@ -29,6 +29,14 @@ import lombok.ToString;
 @NoArgsConstructor
 @ToString
 public class ServerData {
+    
+    private static final String TRIGGER = "trigger";
+    
+    private static final String DISABLED = "disabled";
+    
+    private static final String PAUSED = "paused";
+    
+    private static final String SHUTDOWN = "shutdown";
 
     private String hostName;
 
@@ -54,68 +62,73 @@ public class ServerData {
         this.disabled = disabled;
     }
 
-    public void setTriggerAndRemoveMark(boolean trigger) {
-        this.trigger = trigger;
+    public void removeTriggeredMark() {
+        this.trigger = false;
         this.changedItem = null;
     }
 
-    public void setTriggerAndMark(boolean trigger) {
-        this.trigger = trigger;
-        this.changedItem = ServerNode.TRIGGER_APPENDIX;
+    public void markTriggered() {
+        this.trigger = true;
+        this.changedItem = TRIGGER;
     }
 
-    public void setPausedAndRemoveMark(boolean paused) {
-        this.paused = paused;
+    public void removePausedMark() {
+        this.paused = false;
         this.changedItem = null;
     }
 
-    public void setPausedAndMark(boolean paused) {
-        this.paused = paused;
-        this.changedItem = ServerNode.PAUSED_APPENDIX;
+    public void markPaused() {
+        this.paused = true;
+        this.changedItem = PAUSED;
+    }
+    
+    public void markResumed() {
+        this.paused = false;
+        this.changedItem = PAUSED;
     }
 
-    public void setDisabledAndRemoveMark(boolean disabled) {
-        this.disabled = disabled;
+    public void markDisabled() {
+        this.disabled = true;
+        this.changedItem = DISABLED;
+    }
+    
+    public void markEnabled() {
+        this.disabled = false;
+        this.changedItem = DISABLED;
+    }
+
+    public void removeShutdownMark() {
+        this.shutdown = false;
         this.changedItem = null;
     }
 
-    public void setDisabledAndMark(boolean disabled) {
-        this.disabled = disabled;
-        this.changedItem = ServerNode.DISABLED_APPENDIX;
+    public void markShutdown() {
+        this.shutdown = true;
+        this.changedItem = SHUTDOWN;
     }
 
-    public void setShutdownAndRemoveMark(boolean shutdown) {
-        this.shutdown = shutdown;
-        this.changedItem = null;
-    }
-
-    public void setShutdownAndMark(boolean shutdown) {
-        this.shutdown = shutdown;
-        this.changedItem = ServerNode.SHUTDOWN_APPENDIX;
-    }
-
-    public boolean isTriggerWithMark() {
-        return ServerNode.TRIGGER_APPENDIX.equals(changedItem) && trigger;
+    public boolean isTriggeredWithMark() {
+        return TRIGGER.equals(changedItem) && trigger;
     }
 
     public boolean isPausedWithMark() {
-        return ServerNode.PAUSED_APPENDIX.equals(changedItem) && paused;
+        return PAUSED.equals(changedItem) && paused;
     }
 
     public boolean isResumedWithMark() {
-        return ServerNode.PAUSED_APPENDIX.equals(changedItem) && !paused;
+        return PAUSED.equals(changedItem) && !paused;
     }
 
     public boolean isDisabledWithMark() {
-        return ServerNode.DISABLED_APPENDIX.equals(changedItem) && disabled;
+        return DISABLED.equals(changedItem) && disabled;
     }
 
     public boolean isEnabledWithMark() {
-        return ServerNode.DISABLED_APPENDIX.equals(changedItem) && !disabled;
+        return DISABLED.equals(changedItem) && !disabled;
     }
 
     public boolean isShutdownWithMark() {
-        return ServerNode.SHUTDOWN_APPENDIX.equals(changedItem) && shutdown;
+        return SHUTDOWN.equals(changedItem) && shutdown;
     }
 
 }

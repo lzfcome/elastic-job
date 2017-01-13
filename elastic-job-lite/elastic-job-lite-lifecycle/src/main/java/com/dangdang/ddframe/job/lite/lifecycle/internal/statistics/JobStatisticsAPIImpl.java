@@ -113,6 +113,7 @@ public final class JobStatisticsAPIImpl implements JobStatisticsAPI {
         result.setJobName(jobName);
         result.setServerName(serverName);
         ServerData data = ServerDataGsonFactory.fromJson(regCenter.get(jobNodePath.getServerNodePath(serverName)));
+        //TODO 这里有可能空指针
         result.setIp(data.getHostIP());
         result.setHostName(data.getHostName());
         result.setSharding(data.getSharding());
