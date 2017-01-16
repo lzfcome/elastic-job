@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.google.common.base.Optional;
 import com.google.common.base.Strings;
 
 /**
@@ -226,7 +225,6 @@ public class ServerService {
      * @return 指定服务器数据
      */
     public ServerData loadServerData(final String serverName) {
-        Optional<ServerData> data = Optional.fromNullable(ServerDataGsonFactory.fromJson(jobNodeStorage.getJobNodeData(ServerNode.getServerNode(serverName))));
         return ServerDataGsonFactory.fromJson(jobNodeStorage.getJobNodeData(ServerNode.getServerNode(serverName)));
     }
     
