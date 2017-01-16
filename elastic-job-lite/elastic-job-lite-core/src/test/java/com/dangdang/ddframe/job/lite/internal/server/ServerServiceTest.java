@@ -89,30 +89,6 @@ public final class ServerServiceTest {
     }
     
     @Test
-    public void assertClearJobTriggerStatus() {
-        JobRegistry.getInstance().addJobServerName("test_job", "mockedIP_0001");
-        ServerData data = new ServerData("mockedHostName", "mockedIP", false);
-        data.markTriggered();
-        when(jobNodeStorage.getJobNodeData("servers/mockedIP_0001")).thenReturn(ServerDataGsonFactory.toJson(data));
-        serverService.clearJobTriggerStatus();
-        verify(jobNodeStorage).getJobNodeData("servers/mockedIP_0001");
-        data.removeTriggeredMark();
-        verify(jobNodeStorage).updateJobNode("servers/mockedIP_0001", ServerDataGsonFactory.toJson(data));
-    }
-    
-    @Test
-    public void assertClearJobPausedStatus() {
-        JobRegistry.getInstance().addJobServerName("test_job", "mockedIP_0001");
-        ServerData data = new ServerData("mockedHostName", "mockedIP", false);
-        data.markPaused();
-        when(jobNodeStorage.getJobNodeData("servers/mockedIP_0001")).thenReturn(ServerDataGsonFactory.toJson(data));
-        serverService.clearJobPausedStatus();
-        verify(jobNodeStorage).getJobNodeData("servers/mockedIP_0001");
-        data.removePausedMark();
-        verify(jobNodeStorage).updateJobNode("servers/mockedIP_0001", ServerDataGsonFactory.toJson(data));
-    }
-    
-    @Test
     public void assertIsJobPausedManually() {
         JobRegistry.getInstance().addJobServerName("test_job", "mockedIP_0001");
         ServerData data = new ServerData("mockedHostName", "mockedIP", false);
@@ -120,18 +96,6 @@ public final class ServerServiceTest {
         when(jobNodeStorage.getJobNodeData("servers/mockedIP_0001")).thenReturn(ServerDataGsonFactory.toJson(data));
         assertTrue(serverService.isJobPausedManually());
         verify(jobNodeStorage).getJobNodeData("servers/mockedIP_0001");
-    }
-    
-    @Test
-    public void assertProcessServerShutdown() {
-        JobRegistry.getInstance().addJobServerName("test_job", "mockedIP_0001");
-        ServerData data = new ServerData("mockedHostName", "mockedIP", false);
-        data.markShutdown();
-        when(jobNodeStorage.getJobNodeData("servers/mockedIP_0001")).thenReturn(ServerDataGsonFactory.toJson(data));
-        serverService.processServerShutdown();
-        verify(jobNodeStorage).getJobNodeData("servers/mockedIP_0001");
-        data.removeShutdownMark();
-        verify(jobNodeStorage).updateJobNode("servers/mockedIP_0001", ServerDataGsonFactory.toJson(data));
     }
     
     @Test
@@ -143,13 +107,6 @@ public final class ServerServiceTest {
         verify(jobNodeStorage).getJobNodeData("servers/mockedIP_0001");
         data.setStatus(ServerStatus.RUNNING);
         verify(jobNodeStorage).updateJobNode("servers/mockedIP_0001", ServerDataGsonFactory.toJson(data));
-    }
-    
-    @Test
-    public void assertRemoveServerStatus() {
-        JobRegistry.getInstance().addJobServerName("test_job", "mockedIP_0001");
-        serverService.removeServerStatus();
-        verify(jobNodeStorage).removeJobNodeIfExisted("servers/mockedIP_0001");
     }
     
     @Test
@@ -281,12 +238,4 @@ public final class ServerServiceTest {
         verify(jobNodeStorage).getJobNodeData("servers/host0_0001");
     }
     
-    @Test
-    public void assertIsLocalhostServerEnabled() {
-        JobRegistry.getInstance().addJobServerName("test_job", "host0_0001");
-        ServerData data = new ServerData("host0", "host0", false);
-        when(jobNodeStorage.getJobNodeData("servers/host0_0001")).thenReturn(ServerDataGsonFactory.toJson(data));
-        assertTrue(serverService.isLocalhostServerEnabled());
-        verify(jobNodeStorage).getJobNodeData("servers/host0_0001");
-    }
 }

@@ -166,7 +166,6 @@ public final class JobOperationListenerManagerTest {
         jobOperationListenerManager.new JobStatusJobListener().dataChanged(null, new TreeCacheEvent(
                 TreeCacheEvent.Type.NODE_UPDATED, new ChildData("/test_job/servers/host0_0001", null, "".getBytes())), "/test_job/servers/host0_0001");
         verify(serverService).loadServerData();
-        verify(serverService).clearJobTriggerStatus();
         verify(jobScheduleController, times(0)).triggerJob();
         verify(jobScheduleController, times(0)).shutdown();
         verify(jobScheduleController, times(0)).pauseJob();
@@ -183,7 +182,6 @@ public final class JobOperationListenerManagerTest {
         jobOperationListenerManager.new JobStatusJobListener().dataChanged(null, new TreeCacheEvent(
                 TreeCacheEvent.Type.NODE_UPDATED, new ChildData("/test_job/servers/host0_0001", null, "".getBytes())), "/test_job/servers/host0_0001");
         verify(serverService).loadServerData();
-        verify(serverService).clearJobTriggerStatus();
         verify(serverService).isServerReady();
         verify(jobScheduleController, times(0)).triggerJob();
         verify(jobScheduleController, times(0)).shutdown();
@@ -201,7 +199,6 @@ public final class JobOperationListenerManagerTest {
         jobOperationListenerManager.new JobStatusJobListener().dataChanged(null, new TreeCacheEvent(
                 TreeCacheEvent.Type.NODE_UPDATED, new ChildData("/test_job/servers/host0_0001", null, "".getBytes())), "/test_job/servers/host0_0001");
         verify(serverService).loadServerData();
-        verify(serverService).clearJobTriggerStatus();
         verify(serverService).isServerReady();
         verify(jobScheduleController).triggerJob();
         verify(jobScheduleController, times(0)).shutdown();
@@ -216,7 +213,6 @@ public final class JobOperationListenerManagerTest {
         jobOperationListenerManager.new JobStatusJobListener().dataChanged(null, new TreeCacheEvent(
                 TreeCacheEvent.Type.NODE_UPDATED, new ChildData("/test_job/servers/host0_0001", null, "".getBytes())), "/test_job/servers/host0_0001");
         verify(serverService).loadServerData();
-        verify(serverService, times(0)).clearJobTriggerStatus();
         verify(serverService, times(0)).isServerReady();
         verify(jobScheduleController, times(0)).triggerJob();
         verify(jobScheduleController, times(0)).shutdown();
@@ -234,7 +230,6 @@ public final class JobOperationListenerManagerTest {
         jobOperationListenerManager.new JobStatusJobListener().dataChanged(null, new TreeCacheEvent(
                 TreeCacheEvent.Type.NODE_UPDATED, new ChildData("/test_job/servers/host0_0001", null, "".getBytes())), "/test_job/servers/host0_0001");
         verify(serverService).loadServerData();
-        verify(serverService, times(0)).clearJobTriggerStatus();
         verify(serverService, times(0)).isServerReady();
         verify(jobScheduleController, times(0)).triggerJob();
         verify(jobScheduleController, times(0)).shutdown();
@@ -251,7 +246,6 @@ public final class JobOperationListenerManagerTest {
         jobOperationListenerManager.new JobStatusJobListener().dataChanged(null, new TreeCacheEvent(
                 TreeCacheEvent.Type.NODE_UPDATED, new ChildData("/test_job/servers/host0_0001", null, "".getBytes())), "/test_job/servers/host0_0001");
         verify(serverService).loadServerData();
-        verify(serverService, times(0)).clearJobTriggerStatus();
         verify(serverService, times(0)).isServerReady();
         verify(jobScheduleController, times(0)).triggerJob();
         verify(jobScheduleController, times(0)).shutdown();
@@ -268,7 +262,6 @@ public final class JobOperationListenerManagerTest {
         jobOperationListenerManager.new JobStatusJobListener().dataChanged(null, new TreeCacheEvent(
                 TreeCacheEvent.Type.NODE_UPDATED, new ChildData("/test_job/servers/host0_0001", null, "".getBytes())), "/test_job/servers/host0_0001");
         verify(serverService).loadServerData();
-        verify(serverService, times(0)).clearJobTriggerStatus();
         verify(serverService, times(0)).isServerReady();
         verify(jobScheduleController, times(0)).triggerJob();
         verify(jobScheduleController, times(0)).shutdown();
@@ -285,7 +278,6 @@ public final class JobOperationListenerManagerTest {
         jobOperationListenerManager.new JobStatusJobListener().dataChanged(null, new TreeCacheEvent(
                 TreeCacheEvent.Type.NODE_UPDATED, new ChildData("/test_job/servers/host0_0001", null, "".getBytes())), "/test_job/servers/host0_0001");
         verify(serverService).loadServerData();
-        verify(serverService, times(0)).clearJobTriggerStatus();
         verify(serverService, times(0)).isServerReady();
         verify(jobScheduleController, times(0)).triggerJob();
         verify(jobScheduleController).shutdown();

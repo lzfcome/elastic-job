@@ -110,7 +110,7 @@ public class SchedulerFacadeTest {
     public void assertReleaseJobResource() {
         schedulerFacade.releaseJobResource();
         verify(monitorService).close();
-        verify(serverService).removeServerStatus();
+        verify(serverService).removeServerData();
     }
     
     @Test

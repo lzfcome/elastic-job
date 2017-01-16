@@ -95,20 +95,24 @@ public class JobOperationListenerManager extends AbstractListenerManager {
                     return;
                 }
                 if (data.isTriggeredWithMark()) {
-                    serverService.clearJobTriggerStatus();
+                    data.removeTriggeredMark();
+                    serverService.updateServerData(data);
                     if (hasJobScheduleController && serverService.isServerReady()) {
                         jobScheduleController.triggerJob();
                     }
                 } else if (hasJobScheduleController) {
                     if (data.isShutdownWithMark()) {
                         jobScheduleController.shutdown();
-                        serverService.processServerShutdown();
+                        data.removeShutdownMark();
+                        serverService.updateServerData(data);
                     } else if (data.isPausedWithMark()) {
                         jobScheduleController.pauseJob();
-                        serverService.clearJobStatusMark();
+                        data.setChangedItem(null);
+                        serverService.updateServerData(data);
                     } else if (data.isResumedWithMark()) {
                         jobScheduleController.resumeJob();
-                        serverService.clearJobPausedStatus();
+                        data.removePausedMark();
+                        serverService.updateServerData(data);
                     }
                 }
             }

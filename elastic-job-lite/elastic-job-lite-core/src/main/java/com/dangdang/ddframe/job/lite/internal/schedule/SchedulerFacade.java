@@ -87,7 +87,7 @@ public class SchedulerFacade {
      */
     public void releaseJobResource() {
         monitorService.close();
-        serverService.removeServerStatus();
+        serverService.removeServerData();
     }
     
     /**
